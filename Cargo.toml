@@ -1,0 +1,61 @@
+[package]
+name = "ktme"
+version = "0.1.0"
+edition = "2021"
+authors = ["linhdmn <mnhatlinh.doan@gmail.com>"]
+description = "Knowledge Transfer Me - Automated documentation generation from code changes using AI"
+license = "MIT"
+repository = "https://github.com/FreePeak/ktme"
+homepage = "https://github.com/FreePeak/ktme"
+keywords = ["documentation", "git", "ai", "mcp", "cli"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+# CLI and Configuration
+clap = { version = "4.5", features = ["derive", "cargo"] }
+toml = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Git Integration
+git2 = "0.18"
+
+# HTTP Client (for Confluence, GitHub, GitLab APIs)
+reqwest = { version = "0.12", features = ["json", "blocking"] }
+
+# Async Runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error Handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# File System
+directories = "5.0"
+walkdir = "2.4"
+
+# Markdown Processing
+pulldown-cmark = "0.10"
+comrak = "0.21"
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+tempfile = "3.9"
+assert_cmd = "2.0"
+predicates = "3.1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[[bin]]
+name = "ktme"
+path = "src/main.rs"
