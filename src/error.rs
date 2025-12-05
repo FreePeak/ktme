@@ -43,6 +43,30 @@ pub enum KtmeError {
     #[error("HTTP request error: {0}")]
     Http(#[from] reqwest::Error),
 
+    #[error("Network error: {0}")]
+    NetworkError(String),
+
+    #[error("API error: {0}")]
+    ApiError(String),
+
+    #[error("Deserialization error: {0}")]
+    DeserializationError(String),
+
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
+
+    #[error("Serialization error: {0}")]
+    SerializationError(String),
+
+    #[error("Unsupported provider: {0}")]
+    UnsupportedProvider(String),
+
+    #[error("Document not found: {0}")]
+    DocumentNotFound(String),
+
+    #[error("Document already exists: {0}")]
+    DocumentExists(String),
+
     #[error("Unknown error: {0}")]
     Unknown(String),
 }

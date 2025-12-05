@@ -16,6 +16,7 @@ A Rust-based CLI tool and MCP server for automated documentation generation from
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
 - [MCP Tools](#mcp-tools)
+- [Knowledge Search (RAG)](#knowledge-search-rag)
 - [Usage Examples](#usage-examples)
 - [Architecture](#architecture)
 - [Contributing](#contributing)
@@ -113,6 +114,9 @@ ktme exposes tools through the Model Context Protocol, enabling AI assistants to
 | Git Platform Support | GitHub, GitLab, and Bitbucket integration |
 | Template System | Customizable documentation templates |
 | Flexible Configuration | TOML-based config with environment variable support |
+| **Knowledge Search** | Cross-team documentation search with RAG capabilities |
+| **Confluence Sync** | Incremental sync from Confluence to local cache |
+| **Hybrid Search** | Combines FTS5 keyword search with semantic embeddings |
 
 ## Installation
 
@@ -272,6 +276,29 @@ space_key = "DEV"
 | `CONFLUENCE_API_TOKEN` | Confluence authentication token |
 | `CONFLUENCE_USERNAME` | Confluence username |
 | `KTME_LOG_LEVEL` | Logging level (debug, info, warn, error) |
+| `OPENAI_API_KEY` | OpenAI API key for embeddings (optional) |
+
+### Knowledge Search Configuration
+
+```toml
+[knowledge]
+# Cache location (default: ~/.config/ktme/knowledge.db)
+cache_path = "~/.config/ktme/knowledge.db"
+
+# Embedding provider: "openai" or "local"
+embedding_provider = "local"
+
+# Confluence spaces to sync
+sync_spaces = ["MOBILE", "BACKEND", "SHARED"]
+
+# Auto-sync interval in hours (0 = manual only)
+auto_sync_interval = 0
+
+[knowledge.chunking]
+# Chunk size for RAG (tokens)
+chunk_size = 512
+chunk_overlap = 50
+```
 
 ## MCP Tools
 
@@ -300,6 +327,196 @@ ktme exposes the following tools through MCP:
 | `extract_commit` | Extract changes from a specific commit |
 | `extract_pr` | Extract changes from a pull request |
 | `list_commits` | List commits in a range |
+
+### Knowledge Search Tools
+
+| Tool | Description |
+|------|-------------|
+| `search_knowledge` | Search documentation using natural language queries |
+| `get_document` | Retrieve full document content by ID or URL |
+| `list_documents` | List documents filtered by team, tags, or source |
+| `sync_documents` | Trigger sync from Confluence or other sources |
+
+### Feature Mapping Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_feature` | Get a feature/screen with all related documentation |
+| `map_feature_document` | Link a feature to a documentation page |
+| `list_features` | List all features filtered by team |
+
+## Knowledge Search (RAG)
+
+ktme includes a powerful knowledge search system that enables teams to search documentation across Confluence and local files using natural language queries through MCP-connected AI assistants.
+
+### Architecture
+
+```mermaid
+graph TB
+    subgraph "Users (via Cursor/Claude)"
+        Backend[Backend Team]
+        Mobile[Mobile Team]
+    end
+
+    subgraph "MCP Server"
+        SearchTool[search_knowledge]
+        GetDocTool[get_document]
+        SyncTool[sync_documents]
+    end
+
+    subgraph "Local Cache"
+        SQLite[(SQLite)]
+        FTS[FTS5 Index]
+        Embeddings[Embeddings]
+    end
+
+    subgraph "Source of Truth"
+        Confluence[(Confluence)]
+    end
+
+    Backend --> SearchTool
+    Mobile --> SearchTool
+    SearchTool --> FTS
+    SearchTool --> Embeddings
+    GetDocTool --> SQLite
+    Confluence -->|"Incremental Sync"| SQLite
+    SQLite --> FTS
+    SQLite --> Embeddings
+```
+
+### How It Works
+
+1. **Confluence is the source of truth** - All documentation lives in Confluence
+2. **Local SQLite cache** - Documents are synced to a local cache for fast searching
+3. **Hybrid search** - Combines keyword matching (FTS5) with semantic search (embeddings)
+4. **Incremental sync** - Only fetches documents modified since last sync
+
+### Knowledge Search Tools
+
+| Tool | Description |
+|------|-------------|
+| `search_knowledge` | Search documentation using natural language |
+| `get_document` | Retrieve full document content by ID |
+| `list_documents` | List documents by team, tags, or source |
+| `sync_documents` | Sync documents from Confluence |
+
+### Syncing Documents
+
+```bash
+# Initial full sync from Confluence
+ktme sync --space MOBILE --full
+ktme sync --space BACKEND --full
+
+# Incremental sync (only changed documents)
+ktme sync --space MOBILE
+
+# Sync all configured spaces
+ktme sync --all
+```
+
+### Searching Knowledge
+
+```bash
+# CLI search
+ktme search "food home list resto"
+ktme search "payment integration" --team mobile
+ktme search "authentication flow" --tag "feature:auth"
+
+# Via MCP (AI assistant uses these tools)
+# search_knowledge("food home list resto")
+# search_knowledge("how does the order API work", team="backend")
+```
+
+### Tagging Documents
+
+Documents can be tagged for better organization:
+
+```bash
+# Add tags to indexed documents
+ktme tag DOC_ID --team mobile --tag "screen:food_home"
+ktme tag DOC_ID --tag "feature:restaurant_list"
+
+# Search by tags
+ktme search --tag "screen:*" --team mobile
+```
+
+### Cache Location
+
+The knowledge cache is stored locally per user:
+
+```
+~/.config/ktme/
+  config.toml           # Configuration
+  ktme.db               # Service mappings
+  knowledge.db          # Knowledge search cache
+    documents           # Cached document content
+    documents_fts       # Full-text search index
+    document_chunks     # RAG chunks for context
+    embeddings          # Vector embeddings
+    sync_state          # Last sync timestamps
+```
+
+The cache is ephemeral and can be regenerated by re-syncing from Confluence.
+
+### Feature Mapping
+
+Features represent logical units like mobile screens, components, or business flows. They can be mapped to documentation and services.
+
+```bash
+# Add a feature (mobile screen)
+ktme feature add food_home_screen \
+    --team mobile \
+    --display-name "Food Home Screen" \
+    --aliases "food home,resto list,home screen"
+
+# Map feature to documentation
+ktme feature map food_home_screen \
+    --doc-url "https://confluence.company.com/display/MOBILE/Food+Home"
+
+# Link feature to backend service
+ktme feature link food_home_screen --service restaurant-api
+
+# Get feature with all related docs
+ktme feature get food_home_screen
+```
+
+**Feature-Service-Document Relationships:**
+
+```
+Feature (Mobile)          Service (Backend)       Document (Confluence)
+----------------          -----------------       ---------------------
+food_home_screen    <---> restaurant-api    ---> "Food Home Design Doc"
+                    <---> order-api         ---> "Restaurant API Reference"
+                                            ---> "Order Flow Doc"
+```
+
+### Example: Mobile Team Searching Documentation
+
+```
+Mobile Dev in Cursor: "Find docs about the food home list resto screen"
+
+AI Assistant calls: search_knowledge("food home list resto screen")
+
+System searches:
+1. Features FTS: Matches "food_home_screen" via alias "food home"
+2. Documents FTS: Matches documents containing "resto list"
+3. Returns merged results with feature->document mappings
+
+Results returned:
+1. "Food Home Screen - Restaurant List"
+   URL: https://confluence.company.com/display/MOBILE/Food+Home
+   Team: mobile
+   Feature: food_home_screen
+   Related Services: [restaurant-api, order-api]
+   Summary: "The food home screen displays a list of nearby restaurants..."
+
+2. "Restaurant API Integration"
+   URL: https://confluence.company.com/display/BACKEND/Restaurant+API
+   Team: backend
+   Service: restaurant-api
+   Related Features: [food_home_screen, resto_list]
+   Summary: "API endpoints for fetching restaurant data..."
+```
 
 ## Usage Examples
 
