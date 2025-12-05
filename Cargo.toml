@@ -37,6 +37,8 @@ thiserror = "1.0"
 # File System
 directories = "5.0"
 walkdir = "2.4"
+dirs = "5.0"
+glob = "0.3"
 
 # Markdown Processing
 pulldown-cmark = "0.10"
@@ -44,6 +46,27 @@ comrak = "0.21"
 
 # Date/Time
 chrono = { version = "0.4", features = ["serde"] }
+
+# SQLite Database
+rusqlite = { version = "0.31", features = ["bundled", "chrono"] }
+
+# Async trait for provider abstraction
+async-trait = "0.1"
+
+# URL encoding
+urlencoding = "2.1"
+
+# Base64 encoding/decoding
+base64 = "0.22"
+
+# Regex
+regex = "1.10"
+
+# HTML escaping for Confluence
+html-escape = "0.2"
+
+# SHA256 hashing
+sha2 = "0.10"
 
 [dev-dependencies]
 tempfile = "3.9"
