@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+mod ai;
 mod cli;
 mod config;
 mod doc;
