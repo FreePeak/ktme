@@ -68,6 +68,9 @@ html-escape = "0.2"
 # SHA256 hashing
 sha2 = "0.10"
 
+# UUID for MCP protocol
+uuid = { version = "1.6", features = ["v4"] }
+
 [dev-dependencies]
 tempfile = "3.9"
 assert_cmd = "2.0"

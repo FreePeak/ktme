@@ -2,6 +2,8 @@ use crate::error::Result;
 use crate::git::reader::GitReader;
 use serde::{Deserialize, Serialize};
 
+// Unit tests are in tests/ directory to avoid access issues
+
 #[derive(Debug)]
 pub struct DiffExtractor {
     pub source: String,

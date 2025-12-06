@@ -138,9 +138,22 @@ impl GitReader {
             return Ok(oid);
         }
 
+        // Try HEAD directly
+        if reference == "HEAD" {
+            if let Ok(head_ref) = self.repo.head() {
+                if let Some(head_target) = head_ref.target() {
+                    return Ok(head_target);
+                }
+            }
+        }
+
+        // Try symbolic references (HEAD, main, master, etc.)
+        if let Ok(reference) = self.repo.revparse_single(reference) {
+            return Ok(reference.id());
+        }
+
         // Try common references
         let refs = [
-            reference,  // HEAD, main, master, etc.
             &format!("refs/heads/{}", reference),
             &format!("refs/tags/{}", reference),
             &format!("refs/remotes/origin/{}", reference),
