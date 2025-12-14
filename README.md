@@ -172,6 +172,70 @@ cargo build --release
 cargo install --path .
 ```
 
+### Development Workflow
+
+For active development, use one of these methods to update your ktme command after code changes:
+
+**Method 1: Makefile (Recommended)**
+```bash
+# Quick development cycle
+make dev
+
+# Or step by step
+make build-release
+make install-dev
+```
+
+**Method 2: Rebuild and Replace**
+```bash
+# After code changes, rebuild
+cargo build --release
+
+# Copy to system location (one-time setup)
+sudo cp ./target/release/ktme /usr/local/bin/ktme
+```
+
+**Method 3: Cargo Install (Easiest)**
+```bash
+# After code changes, reinstall globally
+cargo install --path --force .
+```
+
+**Method 4: Development Alias**
+Add to your `~/.zshrc` or `~/.bashrc`:
+```bash
+alias ktme="cd /path/to/ktme && ./target/release/ktme"
+```
+
+**Method 5: PATH Update**
+Add to your shell config:
+```bash
+export PATH="/path/to/ktme/target/release:$PATH"
+```
+
+### Using Makefile
+
+The project includes a Makefile for common development tasks:
+
+```bash
+# Show all available targets
+make help
+
+# Build and install in development mode
+make dev
+
+# Build in release mode
+make build-release
+
+# Run tests and formatting
+make ci
+
+# MCP server management
+make run-mcp    # Start server
+make stop-mcp   # Stop server
+make status-mcp # Check status
+```
+
 ### Verify Installation
 
 ```bash
@@ -746,6 +810,9 @@ Contributions are welcome!
 # Build
 cargo build
 
+# Build in release mode (recommended for testing)
+cargo build --release
+
 # Run tests
 cargo test
 
@@ -754,6 +821,9 @@ cargo fmt
 
 # Lint
 cargo clippy
+
+# Quick development cycle
+cargo build --release && ./target/release/ktme --version
 ```
 
 ## License

@@ -4,6 +4,7 @@ use tempfile::TempDir;
 
 #[test]
 fn test_cli_help() {
+    #[allow(deprecated)]
     let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.arg("--help");
 
@@ -12,7 +13,8 @@ fn test_cli_help() {
 
 #[test]
 fn test_extract_command() {
-    let mut cmd = Command::cargo_bin("ktme").unwrap();
+    #[allow(deprecated)]
+let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&["extract", "--commit", "HEAD"]);
 
     // Should succeed in a git repository
@@ -25,7 +27,8 @@ fn test_extract_output_to_file() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new()?;
     let output_path = temp_dir.path().join("test_diff.json");
 
-    let mut cmd = Command::cargo_bin("ktme").unwrap();
+    #[allow(deprecated)]
+let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&[
         "extract",
         "--commit", "HEAD",
@@ -46,7 +49,8 @@ fn test_extract_output_to_file() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn test_generate_command_without_ai_key() {
-    let mut cmd = Command::cargo_bin("ktme").unwrap();
+    #[allow(deprecated)]
+let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&[
         "generate",
         "--commit", "HEAD",
@@ -79,7 +83,8 @@ fn test_generate_command_with_input_file() -> Result<(), Box<dyn std::error::Err
 
     fs::write(&diff_path, test_diff)?;
 
-    let mut cmd = Command::cargo_bin("ktme").unwrap();
+    #[allow(deprecated)]
+let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&[
         "generate",
         "--input", diff_path.to_str().unwrap(),
@@ -98,7 +103,8 @@ fn test_extract_and_generate_pipeline() -> Result<(), Box<dyn std::error::Error>
     let diff_path = temp_dir.path().join("diff.json");
 
     // First extract changes
-    let mut cmd = Command::cargo_bin("ktme").unwrap();
+    #[allow(deprecated)]
+let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&[
         "extract",
         "--commit", "HEAD",
@@ -110,7 +116,8 @@ fn test_extract_and_generate_pipeline() -> Result<(), Box<dyn std::error::Error>
     assert!(diff_path.exists());
 
     // Then try to generate (will fail without AI key, but pipeline works)
-    let mut cmd = Command::cargo_bin("ktme").unwrap();
+    #[allow(deprecated)]
+let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&[
         "generate",
         "--input", diff_path.to_str().unwrap(),

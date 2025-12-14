@@ -161,6 +161,9 @@ enum McpCommands {
 
         #[arg(long)]
         daemon: bool,
+
+        #[arg(long)]
+        stdio: bool,
     },
 
     /// Check MCP server status
@@ -185,7 +188,12 @@ enum ConfigCommands {
     Validate,
 }
 
-fn setup_logging(verbose: bool, quiet: bool) {
+fn setup_logging(verbose: bool, quiet: bool, is_stdio: bool) {
+    // Skip logging entirely in STDIO mode to avoid JSON parsing issues
+    if is_stdio {
+        return;
+    }
+
     let log_level = if quiet {
         tracing::Level::ERROR
     } else if verbose {
@@ -210,9 +218,19 @@ fn setup_logging(verbose: bool, quiet: bool) {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    setup_logging(cli.verbose, cli.quiet);
+    // Check if we're in stdio mode for MCP
+    let is_stdio = if let Commands::Mcp { command: McpCommands::Start { stdio, .. } } = &cli.command {
+        *stdio
+    } else {
+        false
+    };
 
-    tracing::info!("Starting ktme v{}", env!("CARGO_PKG_VERSION"));
+    setup_logging(cli.verbose, cli.quiet, is_stdio);
+
+    // Only log if not in stdio mode
+    if !is_stdio {
+        tracing::info!("Starting ktme v{}", env!("CARGO_PKG_VERSION"));
+    }
 
     match cli.command {
         Commands::Extract {
@@ -271,8 +289,8 @@ async fn main() -> Result<()> {
             }
         },
         Commands::Mcp { command } => match command {
-            McpCommands::Start { config, daemon } => {
-                cli::commands::mcp::start(config, daemon).await?;
+            McpCommands::Start { config, daemon, stdio } => {
+                cli::commands::mcp::start(config, daemon, stdio).await?;
             }
             McpCommands::Status => {
                 cli::commands::mcp::status().await?;

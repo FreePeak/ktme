@@ -1,32 +1,46 @@
 use crate::error::Result;
 use crate::mcp::server::{McpServer, ServerConfig};
+use crate::mcp::stdio_server::StdioServer;
 
-pub async fn start(config: Option<String>, daemon: bool) -> Result<()> {
-    tracing::info!("Starting MCP server");
+pub async fn start(config: Option<String>, daemon: bool, stdio: bool) -> Result<()> {
+    // Only enable tracing if not in STDIO mode
+    if !stdio {
+        tracing::info!("Starting MCP server");
+    }
 
     let server_config = ServerConfig {
         server_name: "ktme-mcp-server".to_string(),
-        transport: if daemon { "http".to_string() } else { "stdio".to_string() },
-        port: if daemon { Some(3000) } else { None },
+        transport: if stdio { "stdio".to_string() } else if daemon { "sse".to_string() } else { "stdio".to_string() },
+        port: if daemon || !stdio { Some(3000) } else { None },
     };
 
     let server = McpServer::new(server_config)?;
 
     if let Some(cfg) = config {
-        tracing::info!("Using config: {}", cfg);
+        if !stdio {
+            tracing::info!("Using config: {}", cfg);
+        }
     }
 
     if daemon {
-        tracing::info!("Running in daemon mode on HTTP port 3000");
-        println!("🚀 ktme MCP server started in daemon mode on http://localhost:3000");
-        println!("💡 Add to Claude Code: mcp://localhost:3000");
+        tracing::info!("Running in daemon mode on SSE port 3000");
+        // Only print to stdout if not in stdio mode
+        if !stdio {
+            println!("🚀 ktme MCP server started in daemon mode on http://localhost:3000");
+            println!("💡 Configure your AI assistant to connect to: http://localhost:3000");
+        }
+        server.start().await
+    } else if stdio {
+        // Use clean STDIO server with no logging or output
+        let stdio_server = StdioServer::new();
+        stdio_server.run().await
     } else {
-        tracing::info!("Running in STDIO mode");
+        tracing::info!("Running in STDIO mode (default)");
         println!("🚀 ktme MCP server started in STDIO mode");
         println!("💡 Ready for Claude Code integration");
+        println!("💡 Use --stdio flag for clean MCP protocol output");
+        server.start().await
     }
-
-    server.start().await
 }
 
 pub async fn status() -> Result<()> {
