@@ -82,7 +82,7 @@
    - Missing API integration for Confluence
    - Missing file operations for Markdown provider
 
-## Key Gaps and Next Steps
+## Implementation Plan
 
 ### Immediate Priorities (Core Functionality)
 
@@ -121,27 +121,17 @@
    - Add authentication and error handling
    - Test page creation and updates
 
-3. **Template System**
+### Long Term (Advanced Features)
+
+1. **Knowledge Search & RAG System**
+   - Implement SQLite-based document caching
+   - Add FTS5 full-text search
+   - Integrate semantic embeddings for RAG
+
+2. **Template System**
    - Implement template engine with variable substitution
    - Add built-in templates for different documentation types
    - Support custom template directories
-
-### Long Term (Advanced Features)
-
-1. **Knowledge Search & RAG**
-   - Implement document indexing and search
-   - Add embedding generation (OpenAI/local)
-   - Create RAG pipeline for knowledge retrieval
-
-2. **Advanced MCP Features**
-   - Implement full MCP protocol compliance
-   - Add streaming and real-time updates
-   - Support for multiple AI assistants
-
-3. **Enterprise Features**
-   - Multi-team support
-   - Advanced permissions and security
-   - Audit logging and compliance
 
 ## Technical Debt
 

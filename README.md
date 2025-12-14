@@ -105,18 +105,50 @@ ktme exposes tools through the Model Context Protocol, enabling AI assistants to
 
 ## Features
 
-| Feature | Description |
-|---------|-------------|
-| Multi-Source Extraction | Extract from commits, staged changes, PRs, or commit ranges |
-| AI-Powered Generation | Generate documentation using MCP-connected AI models |
-| Multi-Format Output | Support for Markdown files and Confluence pages |
-| Service Mapping | Local storage for service-to-documentation mappings |
-| Git Platform Support | GitHub, GitLab, and Bitbucket integration |
-| Template System | Customizable documentation templates |
-| Flexible Configuration | TOML-based config with environment variable support |
-| **Knowledge Search** | Cross-team documentation search with RAG capabilities |
-| **Confluence Sync** | Incremental sync from Confluence to local cache |
-| **Hybrid Search** | Combines FTS5 keyword search with semantic embeddings |
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Multi-Source Extraction | ✅ **IMPLEMENTED** | Extract from commits, staged changes, PRs, or commit ranges |
+| AI-Powered Generation | ✅ **IMPLEMENTED** | Generate documentation using AI models (OpenAI, Claude) |
+| Multi-Format Output | 🔄 **PARTIAL** | Markdown writer ✅, Confluence writer 🔄 (basic implementation) |
+| Service Mapping | ✅ **IMPLEMENTED** | Local SQLite storage for service-to-documentation mappings |
+| Git Platform Support | 🔄 **PARTIAL** | GitHub ✅, GitLab ✅, Bitbucket ❌ (not implemented) |
+| Template System | 🔄 **PARTIAL** | Framework exists, basic templates available |
+| Flexible Configuration | ✅ **IMPLEMENTED** | TOML-based config with environment variable support |
+| MCP Server | 🔄 **BASIC** | Server structure exists, tools are stubbed/not functional |
+| CLI Commands | ❌ **NOT IMPLEMENTED** | CLI structure defined but command handlers don't exist |
+| **Knowledge Search** | ❌ **NOT IMPLEMENTED** | RAG, embeddings, and search features not implemented |
+| **Confluence Sync** | ❌ **NOT IMPLEMENTED** | No sync functionality implemented |
+| **Hybrid Search** | ❌ **NOT IMPLEMENTED** | No FTS5 or semantic search capabilities |
+| **Feature Mapping** | ❌ **NOT IMPLEMENTED** | No feature-to-document mapping system |
+
+## Current Implementation Status
+
+### ✅ **Fully Implemented**
+- **SQLite Database Layer**: Complete models and repositories for services, mappings, and configurations
+- **Configuration System**: TOML-based configuration with environment variable support
+- **AI Client Framework**: Support for OpenAI and Claude AI providers
+- **Git Integration**: Diff extraction from commits, GitHub and GitLab provider structures
+- **Storage Models**: Comprehensive database schema for all planned features
+
+### 🔄 **Partially Implemented**
+- **MCP Server**: Basic server structure with STDIO/HTTP transport, but tools are stubbed
+- **Documentation Providers**: Framework exists with markdown and Confluence providers
+- **Writers**: Basic markdown and Confluence writers implemented
+- **Templates**: Template engine structure in place
+
+### ❌ **Not Yet Implemented**
+- **CLI Command Handlers**: Command structure defined but handlers don't exist
+- **Knowledge Search/RAG**: No search, embedding, or RAG functionality
+- **Confluence Sync**: No incremental sync from Confluence
+- **Feature Mapping**: No feature-to-document mapping system
+- **Bitbucket Integration**: Provider structure not implemented
+- **MCP Tools**: All MCP tools return placeholder values
+
+### ⚠️ **Known Issues**
+- The project compiles but most functionality is not connected
+- CLI commands will fail because handler modules don't exist
+- MCP server starts but tools are not functional
+- Many unused implementations (compilation warnings)
 
 ## Installation
 
@@ -345,11 +377,13 @@ ktme exposes the following tools through MCP:
 | `map_feature_document` | Link a feature to a documentation page |
 | `list_features` | List all features filtered by team |
 
-## Knowledge Search (RAG)
+## Knowledge Search (RAG) - NOT IMPLEMENTED
 
-ktme includes a powerful knowledge search system that enables teams to search documentation across Confluence and local files using natural language queries through MCP-connected AI assistants.
+> **⚠️ WARNING**: This section describes planned features that are not yet implemented. The knowledge search, RAG capabilities, and related tools do not exist in the current codebase.
 
-### Architecture
+ktme is designed to include a powerful knowledge search system that will enable teams to search documentation across Confluence and local files using natural language queries through MCP-connected AI assistants.
+
+### Planned Architecture
 
 ```mermaid
 graph TB
@@ -374,31 +408,31 @@ graph TB
         Confluence[(Confluence)]
     end
 
-    Backend --> SearchTool
-    Mobile --> SearchTool
-    SearchTool --> FTS
-    SearchTool --> Embeddings
-    GetDocTool --> SQLite
-    Confluence -->|"Incremental Sync"| SQLite
-    SQLite --> FTS
-    SQLite --> Embeddings
+    Backend -.-> SearchTool
+    Mobile -.-> SearchTool
+    SearchTool -.-> FTS
+    SearchTool -.-> Embeddings
+    GetDocTool -.-> SQLite
+    Confluence -.->|"Incremental Sync"| SQLite
+    SQLite -.-> FTS
+    SQLite -.-> Embeddings
 ```
 
-### How It Works
+### How It Will Work
 
 1. **Confluence is the source of truth** - All documentation lives in Confluence
-2. **Local SQLite cache** - Documents are synced to a local cache for fast searching
-3. **Hybrid search** - Combines keyword matching (FTS5) with semantic search (embeddings)
-4. **Incremental sync** - Only fetches documents modified since last sync
+2. **Local SQLite cache** - Documents will be synced to a local cache for fast searching
+3. **Hybrid search** - Will combine keyword matching (FTS5) with semantic search (embeddings)
+4. **Incremental sync** - Will only fetch documents modified since last sync
 
-### Knowledge Search Tools
+### Planned Knowledge Search Tools
 
-| Tool | Description |
-|------|-------------|
-| `search_knowledge` | Search documentation using natural language |
-| `get_document` | Retrieve full document content by ID |
-| `list_documents` | List documents by team, tags, or source |
-| `sync_documents` | Sync documents from Confluence |
+| Tool | Status | Description |
+|------|--------|-------------|
+| `search_knowledge` | ❌ Not Implemented | Search documentation using natural language |
+| `get_document` | ❌ Not Implemented | Retrieve full document content by ID |
+| `list_documents` | ❌ Not Implemented | List documents by team, tags, or source |
+| `sync_documents` | ❌ Not Implemented | Sync documents from Confluence |
 
 ### Syncing Documents
 
@@ -458,9 +492,13 @@ The knowledge cache is stored locally per user:
 
 The cache is ephemeral and can be regenerated by re-syncing from Confluence.
 
-### Feature Mapping
+### Feature Mapping - NOT IMPLEMENTED
 
-Features represent logical units like mobile screens, components, or business flows. They can be mapped to documentation and services.
+> **⚠️ WARNING**: This section describes planned features that are not yet implemented. The feature mapping system does not exist in the current codebase.
+
+Features are planned to represent logical units like mobile screens, components, or business flows. They will be mapped to documentation and services.
+
+**Planned Commands:**
 
 ```bash
 # Add a feature (mobile screen)
@@ -480,7 +518,7 @@ ktme feature link food_home_screen --service restaurant-api
 ktme feature get food_home_screen
 ```
 
-**Feature-Service-Document Relationships:**
+**Planned Feature-Service-Document Relationships:**
 
 ```
 Feature (Mobile)          Service (Backend)       Document (Confluence)
@@ -520,7 +558,9 @@ Results returned:
 
 ## Usage Examples
 
-### Document a Feature Branch
+> **⚠️ NOTE**: The examples below show the intended usage, but most CLI commands are not yet implemented. The project compiles but command handlers are missing.
+
+### Document a Feature Branch (Planned)
 
 ```bash
 # Extract changes from feature branch
@@ -530,7 +570,7 @@ ktme extract --commit main..feature/new-api --output /tmp/feature.json
 ktme generate --input /tmp/feature.json --service api-gateway --type api-doc
 ```
 
-### Update Changelog from PR
+### Update Changelog from PR (Planned)
 
 ```bash
 # Extract PR changes
@@ -540,7 +580,7 @@ ktme extract --pr 456 --provider github
 ktme update --pr 456 --service user-service --section "Changelog"
 ```
 
-### Publish to Confluence
+### Publish to Confluence (Planned)
 
 ```bash
 # Configure Confluence
@@ -552,7 +592,7 @@ ktme mapping add auth-service --url "https://company.atlassian.net/wiki/spaces/D
 ktme generate --commit abc123 --service auth-service --format confluence
 ```
 
-### Document Staged Changes
+### Document Staged Changes (Planned)
 
 ```bash
 # Stage your changes
@@ -564,6 +604,23 @@ ktme generate --staged --service my-service
 # Commit both code and docs
 git add .
 git commit -m "feat: Add new feature with documentation"
+```
+
+### What Actually Works Now
+
+```bash
+# Build the project
+cargo build --release
+
+# Start MCP server (will start but tools are stubs)
+./target/release/ktme mcp start
+
+# Initialize configuration
+# Note: This will fail because CLI handlers aren't implemented
+./target/release/ktme config init
+
+# Check if project compiles
+cargo check
 ```
 
 ## Architecture
@@ -646,6 +703,32 @@ ktme mapping add my-service --file ~/path/to/docs/README.md
 export KTME_LOG_LEVEL="debug"
 ktme --verbose generate --commit abc123 --service my-service
 ```
+
+## TODO - Implementation Roadmap
+
+### Immediate Priority (MVP)
+1. **Implement CLI Command Handlers** - Create the missing `cli/commands/` module with all command implementations
+2. **Connect MCP Tools to Actual Implementations** - Replace stub responses with real functionality
+3. **Basic Documentation Generation Flow** - Wire up extract -> generate -> write/publish flow
+4. **Test the Core Workflow** - Ensure basic extract and generate commands work end-to-end
+
+### Short Term
+1. **Complete Confluence Integration** - Finish API implementation and authentication
+2. **Implement Template Rendering** - Make the template system functional
+3. **Add Bitbucket Support** - Implement the Bitbucket provider
+4. **Basic Error Handling** - Improve error messages and handling
+
+### Medium Term
+1. **Knowledge Search System** - Implement RAG, embeddings, and search capabilities
+2. **Feature Mapping System** - Build the feature-to-document mapping functionality
+3. **Confluence Sync** - Implement incremental sync from Confluence
+4. **Advanced Templates** - Add more sophisticated template features
+
+### Long Term
+1. **Web UI** - Optional web interface for managing mappings and viewing docs
+2. **Advanced AI Features** - Smart documentation updates, context-aware generation
+3. **Performance Optimizations** - Caching, parallel processing
+4. **Additional Git Platforms** - Support for more platforms (Azure DevOps, etc.)
 
 ## Contributing
 

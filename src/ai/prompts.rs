@@ -202,4 +202,22 @@ Generate documentation in Markdown format."#.to_string()
 
         content
     }
+
+    pub fn update_documentation_prompt(
+        diff: &ExtractedDiff,
+        section: Option<&str>,
+    ) -> Result<String> {
+        let base_prompt = if let Some(sec) = section {
+            format!("You are updating the '{}' section of existing documentation. Based on the provided Git diff, generate appropriate update content for this section.", sec)
+        } else {
+            "You are updating existing documentation. Based on the provided Git diff, generate appropriate update content that should be added to the documentation.".to_string()
+        };
+
+        let diff_summary = Self::format_diff_summary(diff);
+
+        Ok(format!(
+            "{}\n\n{}\n\nChanges:\n{}",
+            base_prompt, diff_summary, Self::format_diff_content(diff)
+        ))
+    }
 }

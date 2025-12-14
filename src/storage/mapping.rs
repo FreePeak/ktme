@@ -122,6 +122,17 @@ impl StorageManager {
         Ok(())
     }
 
+    
+    pub fn discover_services(&self, directory: &str) -> Result<Vec<crate::storage::discovery::DiscoveredService>> {
+        use crate::storage::discovery::ServiceDiscovery;
+        let discovery = ServiceDiscovery::new(directory.to_string());
+        discovery.discover()
+    }
+
+    pub fn mappings_file_path(&self) -> PathBuf {
+        self.mappings_file.clone()
+    }
+
     pub fn list_services(&self) -> Result<Vec<String>> {
         let mappings = self.load_mappings()?;
         Ok(mappings.services.iter().map(|s| s.name.clone()).collect())
