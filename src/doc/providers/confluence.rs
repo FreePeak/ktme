@@ -222,7 +222,7 @@ impl ConfluenceProvider {
 
     async fn update_page(&self, page_id: &str, doc: &Document) -> Result<PageContent> {
         // Get current page to retrieve version number
-        let mut current_page = self.get_page_by_id(page_id)
+        let current_page = self.get_page_by_id(page_id)
             .await?
             .ok_or_else(|| KtmeError::DocumentNotFound(page_id.to_string()))?;
 
@@ -346,7 +346,7 @@ impl DocumentProvider for ConfluenceProvider {
     }
 
     async fn update_document(&self, id: &str, content: &str) -> Result<PublishResult> {
-        let mut current_page = self.get_page_by_id(id)
+        let current_page = self.get_page_by_id(id)
             .await?
             .ok_or_else(|| KtmeError::DocumentNotFound(id.to_string()))?;
 
@@ -393,7 +393,7 @@ impl DocumentProvider for ConfluenceProvider {
     }
 
     async fn update_section(&self, id: &str, section: &str, content: &str) -> Result<PublishResult> {
-        let mut current_page = self.get_page_by_id(id)
+        let current_page = self.get_page_by_id(id)
             .await?
             .ok_or_else(|| KtmeError::DocumentNotFound(id.to_string()))?;
 

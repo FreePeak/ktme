@@ -1,5 +1,4 @@
 use crate::error::Result;
-use std::path::Path;
 use walkdir::WalkDir;
 
 pub struct ServiceDiscovery {

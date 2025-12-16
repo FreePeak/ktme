@@ -87,196 +87,226 @@ impl StdioServer {
             .and_then(|m| m.as_str())
             .unwrap_or("");
 
-        let id = request.get("id").cloned().unwrap_or(json!(null));
+        let id = request.get("id");
+
+        // Check if this is a notification (no ID field)
+        // According to JSON-RPC spec, we should never respond to notifications
+        let is_notification = id.is_none();
 
         match method {
             "initialize" => {
-                let response = json!({
-                    "jsonrpc": "2.0",
-                    "id": id,
-                    "result": {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {
-                            "tools": {
-                                "listChanged": false
+                // Only send response if this is a request (has ID), not a notification
+                if !is_notification {
+                    let mut response = json!({
+                        "jsonrpc": "2.0",
+                        "result": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {
+                                "tools": {
+                                    "listChanged": false
+                                },
+                                "logging": {}
                             },
-                            "logging": {}
-                        },
-                        "serverInfo": {
-                            "name": "ktme-mcp-server",
-                            "version": "0.1.0"
+                            "serverInfo": {
+                                "name": "ktme-mcp-server",
+                                "version": "0.1.0"
+                            }
                         }
+                    });
+                    // Only add ID field if this is not a notification
+                    if let Some(request_id) = id {
+                        response["id"] = request_id.clone();
                     }
-                });
-                self.send_response(&response, writer)?;
+                    self.send_response(&response, writer)?;
+                }
             }
             "tools/list" => {
-                let tools = vec![
-                    json!({
-                        "name": "read_changes",
-                        "description": "Read extracted code changes from Git",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "source": {
-                                    "type": "string",
-                                    "description": "Source identifier (commit hash, 'staged', or file path)"
-                                }
-                            },
-                            "required": ["source"]
-                        }
-                    }),
-                    json!({
-                        "name": "get_service_mapping",
-                        "description": "Get documentation location for a service",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "service": {
-                                    "type": "string",
-                                    "description": "Service name"
-                                }
-                            },
-                            "required": ["service"]
-                        }
-                    }),
-                    json!({
-                        "name": "list_services",
-                        "description": "List all mapped services",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {}
-                        }
-                    }),
-                    json!({
-                        "name": "generate_documentation",
-                        "description": "Generate documentation from code changes",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "service": {
-                                    "type": "string",
-                                    "description": "Service name"
+                // Only send response if this is a request (has ID), not a notification
+                if !is_notification {
+                    let tools = vec![
+                        json!({
+                            "name": "read_changes",
+                            "description": "Read extracted code changes from Git",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "source": {
+                                        "type": "string",
+                                        "description": "Source identifier (commit hash, 'staged', or file path)"
+                                    }
                                 },
-                                "changes": {
-                                    "type": "string",
-                                    "description": "JSON string of extracted changes"
+                                "required": ["source"]
+                            }
+                        }),
+                        json!({
+                            "name": "get_service_mapping",
+                            "description": "Get documentation location for a service",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "service": {
+                                        "type": "string",
+                                        "description": "Service name"
+                                    }
                                 },
-                                "format": {
-                                    "type": "string",
-                                    "description": "Output format (markdown, json)",
-                                    "enum": ["markdown", "json"]
-                                }
-                            },
-                            "required": ["service", "changes"]
-                        }
-                    }),
-                    json!({
-                        "name": "update_documentation",
-                        "description": "Update existing documentation",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "service": {
-                                    "type": "string",
-                                    "description": "Service name"
+                                "required": ["service"]
+                            }
+                        }),
+                        json!({
+                            "name": "list_services",
+                            "description": "List all mapped services",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {}
+                            }
+                        }),
+                        json!({
+                            "name": "generate_documentation",
+                            "description": "Generate documentation from code changes",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "service": {
+                                        "type": "string",
+                                        "description": "Service name"
+                                    },
+                                    "changes": {
+                                        "type": "string",
+                                        "description": "JSON string of extracted changes"
+                                    },
+                                    "format": {
+                                        "type": "string",
+                                        "description": "Output format (markdown, json)",
+                                        "enum": ["markdown", "json"]
+                                    }
                                 },
-                                "doc_path": {
-                                    "type": "string",
-                                    "description": "Path to documentation file"
+                                "required": ["service", "changes"]
+                            }
+                        }),
+                        json!({
+                            "name": "update_documentation",
+                            "description": "Update existing documentation",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "service": {
+                                        "type": "string",
+                                        "description": "Service name"
+                                    },
+                                    "doc_path": {
+                                        "type": "string",
+                                        "description": "Path to documentation file"
+                                    },
+                                    "content": {
+                                        "type": "string",
+                                        "description": "Content to append/update"
+                                    }
                                 },
-                                "content": {
-                                    "type": "string",
-                                    "description": "Content to append/update"
-                                }
-                            },
-                            "required": ["service", "doc_path", "content"]
-                        }
-                    })
-                ];
+                                "required": ["service", "doc_path", "content"]
+                            }
+                        })
+                    ];
 
-                let response = json!({
-                    "jsonrpc": "2.0",
-                    "id": id,
-                    "result": {
-                        "tools": tools
+                    // Build response without ID field initially
+                    let mut response = json!({
+                        "jsonrpc": "2.0",
+                        "result": {
+                            "tools": tools
+                        }
+                    });
+                    // Only add ID field if this is not a notification
+                    if let Some(request_id) = id {
+                        response["id"] = request_id.clone();
                     }
-                });
-                self.send_response(&response, writer)?;
+                    self.send_response(&response, writer)?;
+                }
             }
             "tools/call" => {
-                let empty_params = json!({});
-                let params = request.get("params").unwrap_or(&empty_params);
-                let tool_name = params.get("name")
-                    .and_then(|n| n.as_str())
-                    .unwrap_or("");
+                // Only send response if this is a request (has ID), not a notification
+                if !is_notification {
+                    let empty_params = json!({});
+                    let params = request.get("params").unwrap_or(&empty_params);
+                    let tool_name = params.get("name")
+                        .and_then(|n| n.as_str())
+                        .unwrap_or("");
 
-                let empty_args = json!({});
-                let arguments = params.get("arguments").unwrap_or(&empty_args);
+                    let empty_args = json!({});
+                    let arguments = params.get("arguments").unwrap_or(&empty_args);
 
-                let result = match tool_name {
-                    "read_changes" => {
-                        if let Some(source) = arguments.get("source").and_then(|s| s.as_str()) {
-                            McpTools::read_changes(source).unwrap_or_else(|e| format!("Error: {}", e))
-                        } else {
-                            "Error: No source provided".to_string()
+                    let result = match tool_name {
+                        "read_changes" => {
+                            if let Some(source) = arguments.get("source").and_then(|s| s.as_str()) {
+                                McpTools::read_changes(source).unwrap_or_else(|e| format!("Error: {}", e))
+                            } else {
+                                "Error: No source provided".to_string()
+                            }
                         }
-                    }
-                    "get_service_mapping" => {
-                        if let Some(service) = arguments.get("service").and_then(|s| s.as_str()) {
-                            McpTools::get_service_mapping(service).unwrap_or_else(|e| format!("Error: {}", e))
-                        } else {
-                            "Error: No service provided".to_string()
+                        "get_service_mapping" => {
+                            if let Some(service) = arguments.get("service").and_then(|s| s.as_str()) {
+                                McpTools::get_service_mapping(service).unwrap_or_else(|e| format!("Error: {}", e))
+                            } else {
+                                "Error: No service provided".to_string()
+                            }
                         }
-                    }
-                    "list_services" => {
-                        McpTools::list_services()
-                            .map(|s| format!("Services: {}", s.join(", ")))
-                            .unwrap_or_else(|e| format!("Error: {}", e))
-                    }
-                    "generate_documentation" => {
-                        let service = arguments.get("service").and_then(|s| s.as_str()).unwrap_or("");
-                        let changes = arguments.get("changes").and_then(|c| c.as_str()).unwrap_or("");
-                        let format = arguments.get("format").and_then(|f| f.as_str());
+                        "list_services" => {
+                            McpTools::list_services()
+                                .map(|s| format!("Services: {}", s.join(", ")))
+                                .unwrap_or_else(|e| format!("Error: {}", e))
+                        }
+                        "generate_documentation" => {
+                            let service = arguments.get("service").and_then(|s| s.as_str()).unwrap_or("");
+                            let changes = arguments.get("changes").and_then(|c| c.as_str()).unwrap_or("");
+                            let format = arguments.get("format").and_then(|f| f.as_str());
 
-                        McpTools::generate_documentation(service, changes, format)
-                            .unwrap_or_else(|e| format!("Error: {}", e))
-                    }
-                    "update_documentation" => {
-                        let service = arguments.get("service").and_then(|s| s.as_str()).unwrap_or("");
-                        let doc_path = arguments.get("doc_path").and_then(|d| d.as_str()).unwrap_or("");
-                        let content = arguments.get("content").and_then(|c| c.as_str()).unwrap_or("");
+                            McpTools::generate_documentation(service, changes, format)
+                                .unwrap_or_else(|e| format!("Error: {}", e))
+                        }
+                        "update_documentation" => {
+                            let service = arguments.get("service").and_then(|s| s.as_str()).unwrap_or("");
+                            let doc_path = arguments.get("doc_path").and_then(|d| d.as_str()).unwrap_or("");
+                            let content = arguments.get("content").and_then(|c| c.as_str()).unwrap_or("");
 
-                        McpTools::update_documentation(service, doc_path, content)
-                            .unwrap_or_else(|e| format!("Error: {}", e))
-                    }
-                    _ => {
-                        format!("Unknown tool: {}", tool_name)
-                    }
-                };
+                            McpTools::update_documentation(service, doc_path, content)
+                                .unwrap_or_else(|e| format!("Error: {}", e))
+                        }
+                        _ => {
+                            format!("Unknown tool: {}", tool_name)
+                        }
+                    };
 
-                let response = json!({
-                    "jsonrpc": "2.0",
-                    "id": id,
-                    "result": {
-                        "content": [{
-                            "type": "text",
-                            "text": result
-                        }]
+                    // Build response without ID field initially
+                    let mut response = json!({
+                        "jsonrpc": "2.0",
+                        "result": {
+                            "content": [{
+                                "type": "text",
+                                "text": result
+                            }]
+                        }
+                    });
+                    // Only add ID field if this is not a notification
+                    if let Some(request_id) = id {
+                        response["id"] = request_id.clone();
                     }
-                });
-                self.send_response(&response, writer)?;
+                    self.send_response(&response, writer)?;
+                }
             }
             _ => {
-                let response = json!({
-                    "jsonrpc": "2.0",
-                    "id": id,
-                    "error": {
-                        "code": -32601,
-                        "message": "Method not found"
+                // Only send response if this is a request (has ID), not a notification
+                if !is_notification {
+                    let mut response = json!({
+                        "jsonrpc": "2.0",
+                        "error": {
+                            "code": -32601,
+                            "message": "Method not found"
+                        }
+                    });
+                    // Only add ID field if this is not a notification
+                    if let Some(request_id) = id {
+                        response["id"] = request_id.clone();
                     }
-                });
-                self.send_response(&response, writer)?;
+                    self.send_response(&response, writer)?;
+                }
             }
         }
 

@@ -108,16 +108,24 @@ impl McpServer {
                         }
                         Err(e) => {
                             tracing::error!("Error handling message: {}", e);
-                            let error_response = json!({
-                                "jsonrpc": "2.0",
-                                "id": null,
-                                "error": {
-                                    "code": -32603,
-                                    "message": "Internal error",
-                                    "data": e.to_string()
+                            // Try to parse the request to get the ID for error response
+                            if let Ok(parsed_request) = serde_json::from_str::<Value>(trimmed) {
+                                // Only send error response if ID is not null (not a notification)
+                                if let Some(request_id) = parsed_request.get("id") {
+                                    if !request_id.is_null() {
+                                        let error_response = json!({
+                                            "jsonrpc": "2.0",
+                                            "id": request_id,
+                                            "error": {
+                                                "code": -32603,
+                                                "message": "Internal error",
+                                                "data": e.to_string()
+                                            }
+                                        });
+                                        self.send_response(&error_response, &mut stdout)?;
+                                    }
                                 }
-                            });
-                            self.send_response(&error_response, &mut stdout)?;
+                            }
                         }
                     }
                 }
@@ -168,8 +176,16 @@ impl McpServer {
     }
 
     async fn handle_message(&self, message: &str, writer: &mut impl Write) -> Result<bool> {
-        let request: Value = serde_json::from_str(message)
-            .map_err(|e| crate::error::KtmeError::Serialization(e))?;
+        let request: Value = match serde_json::from_str(message) {
+            Ok(req) => req,
+            Err(e) => {
+                tracing::error!("Invalid JSON received: {}", e);
+                // For invalid JSON, we can't determine if it was a request or notification
+                // According to JSON-RPC spec, we should not send any response for parse errors
+                // as we can't determine if it was a notification
+                return Ok(true);
+            }
+        };
 
         let method = request.get("method")
             .and_then(|m| m.as_str())
@@ -177,133 +193,175 @@ impl McpServer {
 
         let id = request.get("id");
 
+        // Check if this is a notification (no ID field or ID is null)
+        // For MCP, we should never respond to notifications
+        let is_notification = id.is_none() || (id.is_some() && id.unwrap().is_null());
+
+        // Check if this is a valid JSON-RPC request
+        if method.is_empty() {
+            // Missing method field - never respond to notifications
+            if is_notification {
+                return Ok(true);
+            }
+
+            let mut error_response = json!({
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32600,
+                    "message": "Invalid Request",
+                    "data": "Missing 'method' field"
+                }
+            });
+            // Only add ID if it exists (not a notification)
+            if let Some(request_id) = id {
+                error_response["id"] = request_id.clone();
+            }
+            self.send_response(&error_response, writer)?;
+            return Ok(true);
+        }
+
         match method {
             "initialize" => {
-                let response = json!({
-                    "jsonrpc": "2.0",
-                    "id": id,
-                    "result": {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {
-                            "tools": {
-                                "listChanged": false
+                // Only send response if this is a request (has ID), not a notification
+                if !is_notification {
+                    let mut response = json!({
+                        "jsonrpc": "2.0",
+                        "result": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {
+                                "tools": {
+                                    "listChanged": false
+                                },
+                                "logging": {}
                             },
-                            "logging": {}
-                        },
-                        "serverInfo": {
-                            "name": self.config.server_name,
-                            "version": env!("CARGO_PKG_VERSION")
+                            "serverInfo": {
+                                "name": self.config.server_name,
+                                "version": env!("CARGO_PKG_VERSION")
+                            }
                         }
+                    });
+                    // Only add ID field if this is not a notification
+                    if let Some(request_id) = id {
+                        response["id"] = request_id.clone();
                     }
-                });
-                self.send_response(&response, writer)?;
+                    self.send_response(&response, writer)?;
+                }
                 tracing::info!("Server initialized");
             }
             "tools/list" => {
-                let tools = vec![
-                    json!({
-                        "name": "read_changes",
-                        "description": "Read extracted code changes from Git",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "source": {
-                                    "type": "string",
-                                    "description": "Source identifier (commit hash, 'staged', or file path)"
-                                }
-                            },
-                            "required": ["source"]
-                        }
-                    }),
-                    json!({
-                        "name": "get_service_mapping",
-                        "description": "Get documentation location for a service",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "service": {
-                                    "type": "string",
-                                    "description": "Service name"
-                                }
-                            },
-                            "required": ["service"]
-                        }
-                    }),
-                    json!({
-                        "name": "list_services",
-                        "description": "List all mapped services",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {}
-                        }
-                    }),
-                    json!({
-                        "name": "generate_documentation",
-                        "description": "Generate documentation from code changes",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "service": {
-                                    "type": "string",
-                                    "description": "Service name"
+                // Only send response if this is a request (has ID), not a notification
+                if !is_notification {
+                    let tools = vec![
+                        json!({
+                            "name": "read_changes",
+                            "description": "Read extracted code changes from Git",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "source": {
+                                        "type": "string",
+                                        "description": "Source identifier (commit hash, 'staged', or file path)"
+                                    }
                                 },
-                                "changes": {
-                                    "type": "string",
-                                    "description": "JSON string of extracted changes"
+                                "required": ["source"]
+                            }
+                        }),
+                        json!({
+                            "name": "get_service_mapping",
+                            "description": "Get documentation location for a service",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "service": {
+                                        "type": "string",
+                                        "description": "Service name"
+                                    }
                                 },
-                                "format": {
-                                    "type": "string",
-                                    "description": "Output format (markdown, json)",
-                                    "enum": ["markdown", "json"]
-                                }
-                            },
-                            "required": ["service", "changes"]
-                        }
-                    }),
-                    json!({
-                        "name": "update_documentation",
-                        "description": "Update existing documentation",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "service": {
-                                    "type": "string",
-                                    "description": "Service name"
+                                "required": ["service"]
+                            }
+                        }),
+                        json!({
+                            "name": "list_services",
+                            "description": "List all mapped services",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {}
+                            }
+                        }),
+                        json!({
+                            "name": "generate_documentation",
+                            "description": "Generate documentation from code changes",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "service": {
+                                        "type": "string",
+                                        "description": "Service name"
+                                    },
+                                    "changes": {
+                                        "type": "string",
+                                        "description": "JSON string of extracted changes"
+                                    },
+                                    "format": {
+                                        "type": "string",
+                                        "description": "Output format (markdown, json)",
+                                        "enum": ["markdown", "json"]
+                                    }
                                 },
-                                "doc_path": {
-                                    "type": "string",
-                                    "description": "Path to documentation file"
+                                "required": ["service", "changes"]
+                            }
+                        }),
+                        json!({
+                            "name": "update_documentation",
+                            "description": "Update existing documentation",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "service": {
+                                        "type": "string",
+                                        "description": "Service name"
+                                    },
+                                    "doc_path": {
+                                        "type": "string",
+                                        "description": "Path to documentation file"
+                                    },
+                                    "content": {
+                                        "type": "string",
+                                        "description": "Content to append/update"
+                                    }
                                 },
-                                "content": {
-                                    "type": "string",
-                                    "description": "Content to append/update"
-                                }
-                            },
-                            "required": ["service", "doc_path", "content"]
-                        }
-                    })
-                ];
+                                "required": ["service", "doc_path", "content"]
+                            }
+                        })
+                    ];
 
-                let response = json!({
-                    "jsonrpc": "2.0",
-                    "id": id,
-                    "result": {
-                        "tools": tools
+                    // Build response without ID field initially
+                    let mut response = json!({
+                        "jsonrpc": "2.0",
+                        "result": {
+                            "tools": tools
+                        }
+                    });
+                    // Only add ID field if this is not a notification
+                    if let Some(request_id) = id {
+                        response["id"] = request_id.clone();
                     }
-                });
-                self.send_response(&response, writer)?;
+                    self.send_response(&response, writer)?;
+                }
             }
             "tools/call" => {
-                let empty_params = json!({});
-                let params = request.get("params").unwrap_or(&empty_params);
-                let tool_name = params.get("name")
-                    .and_then(|n| n.as_str())
-                    .unwrap_or("");
+                // Only send response if this is a request (has ID), not a notification
+                if !is_notification {
+                    let empty_params = json!({});
+                    let params = request.get("params").unwrap_or(&empty_params);
+                    let tool_name = params.get("name")
+                        .and_then(|n| n.as_str())
+                        .unwrap_or("");
 
-                let empty_args = json!({});
-                let arguments = params.get("arguments").unwrap_or(&empty_args);
+                    let empty_args = json!({});
+                    let arguments = params.get("arguments").unwrap_or(&empty_args);
 
-                match tool_name {
+                    match tool_name {
                     "read_changes" => {
                         if let Some(source) = arguments.get("source").and_then(|s| s.as_str()) {
                             match McpTools::read_changes(source) {
@@ -461,39 +519,46 @@ impl McpServer {
                             }
                         }
                     }
-                    _ => {
-                        let response = json!({
-                            "jsonrpc": "2.0",
-                            "id": id,
-                            "error": {
-                                "code": -32601,
-                                "message": "Method not found",
-                                "data": format!("Unknown tool: {}", tool_name)
-                            }
-                        });
-                        self.send_response(&response, writer)?;
+                        _ => {
+                            let response = json!({
+                                "jsonrpc": "2.0",
+                                "id": id,
+                                "error": {
+                                    "code": -32601,
+                                    "message": "Method not found",
+                                    "data": format!("Unknown tool: {}", tool_name)
+                                }
+                            });
+                            self.send_response(&response, writer)?;
+                        }
                     }
                 }
             }
             "ping" => {
-                let response = json!({
-                    "jsonrpc": "2.0",
-                    "id": id,
-                    "result": {}
-                });
-                self.send_response(&response, writer)?;
+                // Only send response if this is a request (has ID), not a notification
+                if !is_notification {
+                    let response = json!({
+                        "jsonrpc": "2.0",
+                        "id": id,
+                        "result": {}
+                    });
+                    self.send_response(&response, writer)?;
+                }
             }
             _ => {
-                let response = json!({
-                    "jsonrpc": "2.0",
-                    "id": id,
-                    "error": {
-                        "code": -32601,
-                        "message": "Method not found",
-                        "data": format!("Unknown method: {}", method)
-                    }
-                });
-                self.send_response(&response, writer)?;
+                // Only send response if this is a request (has ID), not a notification
+                if !is_notification {
+                    let response = json!({
+                        "jsonrpc": "2.0",
+                        "id": id,
+                        "error": {
+                            "code": -32601,
+                            "message": "Method not found",
+                            "data": format!("Unknown method: {}", method)
+                        }
+                    });
+                    self.send_response(&response, writer)?;
+                }
             }
         }
 

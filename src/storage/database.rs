@@ -81,7 +81,7 @@ impl Database {
     }
 
     /// Get a connection guard for executing queries
-    pub fn connection(&self) -> Result<std::sync::MutexGuard<Connection>> {
+    pub fn connection(&self) -> Result<std::sync::MutexGuard<'_, Connection>> {
         self.conn
             .lock()
             .map_err(|e| KtmeError::Storage(format!("Failed to acquire database lock: {}", e)))
