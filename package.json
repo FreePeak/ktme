@@ -1,0 +1,60 @@
+{
+  "name": "ktme",
+  "version": "0.1.0",
+  "description": "Knowledge Transfer Me - Automated documentation generation from code changes using AI",
+  "main": "index.js",
+  "bin": {
+    "ktme": "bin/ktme"
+  },
+  "scripts": {
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "prepublishOnly": "napi prepublish -t npm",
+    "test": "echo 'Tests not implemented yet' && exit 0"
+  },
+  "napi": {
+    "name": "ktme",
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "x86_64-pc-windows-msvc",
+        "i686-pc-windows-msvc",
+        "x86_64-apple-darwin",
+        "aarch64-apple-darwin",
+        "x86_64-unknown-linux-gnu",
+        "x86_64-unknown-linux-musl",
+        "aarch64-unknown-linux-gnu"
+      ]
+    }
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.0"
+  },
+  "keywords": [
+    "documentation",
+    "git",
+    "ai",
+    "mcp",
+    "cli",
+    "knowledge-transfer"
+  ],
+  "author": "linhdmn <mnhatlinh.doan@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FreePeak/ktme.git"
+  },
+  "homepage": "https://github.com/FreePeak/ktme",
+  "engines": {
+    "node": ">= 10"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "files": [
+    "index.d.ts",
+    "index.js",
+    "bin/ktme"
+  ]
+}

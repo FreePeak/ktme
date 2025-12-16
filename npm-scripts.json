@@ -1,0 +1,43 @@
+{
+  "name": "ktme-cli",
+  "version": "0.1.0",
+  "description": "Knowledge Transfer Me - Automated documentation generation from code changes using AI",
+  "main": "index.js",
+  "bin": {
+    "ktme": "./bin/ktme.sh"
+  },
+  "scripts": {
+    "install": "node install.js",
+    "postinstall": "node postinstall.js",
+    "preuninstall": "node preuninstall.js",
+    "test": "echo 'Tests not implemented yet' && exit 0"
+  },
+  "keywords": [
+    "documentation",
+    "git",
+    "ai",
+    "mcp",
+    "cli",
+    "knowledge-transfer"
+  ],
+  "author": "linhdmn <mnhatlinh.doan@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FreePeak/ktme.git"
+  },
+  "homepage": "https://github.com/FreePeak/ktme",
+  "engines": {
+    "node": ">= 10"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64",
+    "ia32"
+  ]
+}

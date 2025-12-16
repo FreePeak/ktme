@@ -1,0 +1,40 @@
+# Rust
+src/
+target/
+Cargo.lock
+Cargo.toml
+
+# Development
+.git/
+.gitignore
+.github/
+Makefile
+README.md
+
+# Test files
+tests/
+*.test.js
+
+# NAPI build artifacts
+index.node
+*.d.ts
+!index.d.ts
+
+# Documentation
+docs/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
