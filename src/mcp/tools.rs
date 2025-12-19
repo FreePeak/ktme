@@ -8,7 +8,7 @@ pub struct McpTools;
 impl McpTools {
     pub fn read_changes(file_path: &str) -> Result<String> {
         tracing::info!("MCP Tool: read_changes({})", file_path);
-        
+
         // Check if file_path is a Git reference or a file
         if file_path.starts_with("commit:") {
             let commit_ref = &file_path[7..]; // Remove "commit:" prefix
@@ -23,6 +23,11 @@ impl McpTools {
             let reader = GitReader::new(None)?;
             let diffs = reader.read_commit_range(file_path)?;
             Ok(serde_json::to_string_pretty(&diffs)?)
+        } else if file_path == "HEAD" || file_path == "HEAD~1" || file_path.len() == 7 || file_path.len() == 40 {
+            // Handle raw commit hashes and Git references
+            let reader = GitReader::new(None)?;
+            let diff = reader.read_commit(file_path)?;
+            Ok(serde_json::to_string_pretty(&diff)?)
         } else {
             // Try to read as a file containing diff content
             std::fs::read_to_string(file_path)

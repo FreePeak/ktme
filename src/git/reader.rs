@@ -48,11 +48,7 @@ impl GitReader {
     pub fn read_commit(&self, commit_ref: &str) -> Result<ExtractedDiff> {
         tracing::info!("Reading commit: {}", commit_ref);
 
-        let oid = Oid::from_str(commit_ref)
-            .or_else(|_| self.repo.refname_to_id(&format!("refs/heads/{}", commit_ref)))
-            .or_else(|_| self.repo.refname_to_id(&format!("refs/tags/{}", commit_ref)))
-            .map_err(|e| crate::error::KtmeError::Git(e))?;
-
+        let oid = self.resolve_reference(commit_ref)?;
         let commit = self.repo.find_commit(oid)?;
         self.extract_commit_diff(&commit)
     }
