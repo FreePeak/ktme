@@ -72,10 +72,12 @@ impl Config {
             return Ok(PathBuf::from(custom_path));
         }
 
-        let project_dirs = ProjectDirs::from("com", "ktme", "ktme")
-            .ok_or_else(|| KtmeError::Config("Could not determine config directory".to_string()))?;
+        // Use ~/.config/ktme explicitly
+        let home_dir = dirs::home_dir()
+            .ok_or_else(|| KtmeError::Config("Could not determine home directory".to_string()))?;
+        let config_dir = home_dir.join(".config").join("ktme");
 
-        Ok(project_dirs.config_dir().join("config.toml"))
+        Ok(config_dir.join("config.toml"))
     }
 
     pub fn config_dir() -> Result<PathBuf> {

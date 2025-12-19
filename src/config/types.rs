@@ -111,6 +111,9 @@ pub struct StorageConfig {
     pub mappings_file: Option<PathBuf>,
     #[serde(default)]
     pub auto_discover: bool,
+    #[serde(default)]
+    pub use_sqlite: bool,
+    pub database_file: Option<PathBuf>,
 }
 
 impl Default for StorageConfig {
@@ -118,6 +121,8 @@ impl Default for StorageConfig {
         Self {
             mappings_file: None,
             auto_discover: false,
+            use_sqlite: false,
+            database_file: None,
         }
     }
 }

@@ -15,9 +15,10 @@ impl Database {
     /// If path is None, uses default location: ~/.config/ktme/ktme.db
     pub fn new(path: Option<PathBuf>) -> Result<Self> {
         let db_path = path.unwrap_or_else(|| {
-            let config_dir = dirs::config_dir()
-                .unwrap_or_else(|| PathBuf::from("."))
-                .join("ktme");
+            // Use ~/.config/ktme/ktme.db explicitly
+            let home_dir = dirs::home_dir()
+                .unwrap_or_else(|| PathBuf::from("."));
+            let config_dir = home_dir.join(".config").join("ktme");
             if let Err(e) = std::fs::create_dir_all(&config_dir) {
                 tracing::warn!("Failed to create config directory: {}", e);
             }

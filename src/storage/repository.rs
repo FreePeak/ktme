@@ -132,6 +132,21 @@ impl ServiceRepository {
 
         Ok(rows > 0)
     }
+
+    pub fn list_all_names(&self) -> Result<Vec<String>> {
+        let conn = self.db.connection()?;
+
+        let mut stmt = conn
+            .prepare("SELECT name FROM services ORDER BY name")
+            .map_err(|e| KtmeError::Storage(format!("Failed to prepare query: {}", e)))?;
+
+        let names: std::result::Result<Vec<String>, rusqlite::Error> = stmt
+            .query_map([], |row| row.get(0))
+            .map_err(|e| KtmeError::Storage(format!("Failed to execute query: {}", e)))?
+            .collect();
+
+        names.map_err(|e| KtmeError::Storage(format!("Failed to collect results: {}", e)))
+    }
 }
 
 // ============================================================================

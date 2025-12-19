@@ -1,5 +1,7 @@
 use crate::config::Config;
 use crate::error::{KtmeError, Result};
+use crate::storage::database::Database;
+use crate::storage::repository::{ServiceRepository, DocumentMappingRepository, GenerationHistoryRepository};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -37,6 +39,8 @@ pub struct DocumentLocation {
 
 pub struct StorageManager {
     mappings_file: PathBuf,
+    database: Option<Database>,
+    use_sqlite: bool,
 }
 
 impl StorageManager {
@@ -49,7 +53,14 @@ impl StorageManager {
             config_dir.join("mappings.toml")
         };
 
-        Ok(Self { mappings_file })
+        let use_sqlite = config.storage.use_sqlite;
+        let database = if use_sqlite {
+            Some(Database::new(config.storage.database_file)?)
+        } else {
+            None
+        };
+
+        Ok(Self { mappings_file, database, use_sqlite })
     }
 
     pub fn load_mappings(&self) -> Result<Mappings> {
@@ -134,8 +145,41 @@ impl StorageManager {
     }
 
     pub fn list_services(&self) -> Result<Vec<String>> {
-        let mappings = self.load_mappings()?;
-        Ok(mappings.services.iter().map(|s| s.name.clone()).collect())
+        if self.use_sqlite {
+            if let Some(ref db) = self.database {
+                let service_repo = ServiceRepository::new(db.clone());
+                service_repo.list_all_names()
+            } else {
+                Ok(vec![])
+            }
+        } else {
+            let mappings = self.load_mappings()?;
+            Ok(mappings.services.iter().map(|s| s.name.clone()).collect())
+        }
+    }
+
+    /// Initialize the database with SQLite enabled
+    pub fn initialize_database(&self) -> Result<()> {
+        if self.use_sqlite {
+            if let Some(ref db) = self.database {
+                // Database is already initialized via migrations in Database::new()
+                tracing::info!("SQLite database initialized successfully");
+                Ok(())
+            } else {
+                Err(KtmeError::Storage("SQLite not initialized".to_string()))
+            }
+        } else {
+            Err(KtmeError::Storage("SQLite not enabled in configuration".to_string()))
+        }
+    }
+
+    /// Get database statistics (only available when SQLite is enabled)
+    pub fn get_database_stats(&self) -> Result<crate::storage::database::DatabaseStats> {
+        if let Some(ref db) = self.database {
+            db.stats()
+        } else {
+            Err(KtmeError::Storage("Database not initialized".to_string()))
+        }
     }
 }
 
