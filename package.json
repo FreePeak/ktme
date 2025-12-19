@@ -1,34 +1,16 @@
 {
-  "name": "ktme",
+  "name": "ktme-cli",
   "version": "0.1.0",
   "description": "Knowledge Transfer Me - Automated documentation generation from code changes using AI",
   "main": "index.js",
   "bin": {
-    "ktme": "bin/ktme"
+    "ktme": "./bin/ktme.sh"
   },
   "scripts": {
-    "build": "napi build --platform --release",
-    "build:debug": "napi build --platform",
-    "prepublishOnly": "napi prepublish -t npm",
+    "install": "node install.js",
+    "postinstall": "node postinstall.js",
+    "preuninstall": "node preuninstall.js",
     "test": "echo 'Tests not implemented yet' && exit 0"
-  },
-  "napi": {
-    "name": "ktme",
-    "triples": {
-      "defaults": true,
-      "additional": [
-        "x86_64-pc-windows-msvc",
-        "i686-pc-windows-msvc",
-        "x86_64-apple-darwin",
-        "aarch64-apple-darwin",
-        "x86_64-unknown-linux-gnu",
-        "x86_64-unknown-linux-musl",
-        "aarch64-unknown-linux-gnu"
-      ]
-    }
-  },
-  "devDependencies": {
-    "@napi-rs/cli": "^2.18.0"
   },
   "keywords": [
     "documentation",
@@ -48,13 +30,27 @@
   "engines": {
     "node": ">= 10"
   },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64",
+    "ia32"
+  ],
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
   "files": [
-    "index.d.ts",
     "index.js",
-    "bin/ktme"
+    "install.js",
+    "postinstall.js",
+    "preuninstall.js",
+    "bin/",
+    "README.md",
+    "LICENSE"
   ]
 }
