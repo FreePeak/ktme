@@ -160,22 +160,30 @@ ktme exposes tools through the Model Context Protocol, enabling AI assistants to
 
 ## Installation
 
-### Prerequisites
+### Option 1: Install from NPM (Recommended)
 
+```bash
+npm install -g ktme-cli
+
+# Verify installation
+ktme --version
+```
+
+### Option 2: Install from Source
+
+**Prerequisites:**
 - Rust 1.70 or higher
 - Git 2.30 or higher
 - Access to an AI model API (Claude, GPT, etc.)
 
-### From Source
-
+**Build from source:**
 ```bash
 git clone https://github.com/FreePeak/ktme.git
 cd ktme
 cargo build --release
 ```
 
-### Using Cargo
-
+**Using Cargo:**
 ```bash
 cargo install --path .
 ```
@@ -250,6 +258,8 @@ make status-mcp # Check status
 ktme --version
 ```
 
+> **Note**: After installing `ktme-cli` from NPM, the command available is `ktme` (without `-cli`).
+
 ## AI Agent Integration
 
 ktme uses the [Rust MCP SDK](https://github.com/modelcontextprotocol/rust-sdk) to implement the Model Context Protocol, enabling seamless communication with AI coding assistants.
@@ -316,30 +326,38 @@ Then configure your AI assistant to connect to `http://127.0.0.1:8080`.
 
 ## Quick Start
 
-### 1. Initialize Configuration
+### 1. Install ktme
+
+```bash
+npm install -g ktme-cli
+```
+
+### 2. Initialize Configuration
 
 ```bash
 ktme config init
 ```
 
-### 2. Set Up API Key
+### 3. Set Up API Key
 
 ```bash
 export KTME_MCP_API_KEY="your-api-key"
 ```
 
-### 3. Map Your Service
+### 4. Map Your Service
 
 ```bash
 ktme mapping add user-api --file ~/projects/user-api/README.md
 ```
 
-### 4. Generate Documentation
+### 5. Generate Documentation
 
 ```bash
 cd ~/projects/user-api
 ktme generate --commit HEAD --service user-api
 ```
+
+> **Important**: The NPM package is named `ktme-cli`, but after installation, you use the `ktme` command.
 
 ## Configuration
 
