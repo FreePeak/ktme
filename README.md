@@ -87,10 +87,10 @@ Map your services to their documentation locations:
 # ~/.config/ktme/mappings.toml
 [[services]]
 name = "api-gateway"
-path = "my-company/api-gateway"
+path = "projects/api-gateway"
 docs = [
-  { type = "markdown", location = "my-company/api-gateway/README.md" },
-  { type = "confluence", location = "https://confluence.example.com/display/DEV/APIGateway" }
+  { type = "markdown", location = "projects/api-gateway/README.md" },
+  { type = "confluence", location = "https://company.atlassian.net/wiki/display/API/APIGateway" }
 ]
 ```
 
@@ -331,14 +331,14 @@ export KTME_MCP_API_KEY="your-api-key"
 ### 3. Map Your Service
 
 ```bash
-ktme mapping add my-service --file ~/projects/my-service/README.md
+ktme mapping add user-api --file ~/projects/user-api/README.md
 ```
 
 ### 4. Generate Documentation
 
 ```bash
-cd ~/projects/my-service
-ktme generate --commit HEAD --service my-service
+cd ~/projects/user-api
+ktme generate --commit HEAD --service user-api
 ```
 
 ## Configuration
@@ -349,7 +349,7 @@ Location: `~/.config/ktme/config.toml`
 
 ```toml
 [general]
-default_directory = "~/work/my-company"
+default_directory = "~/projects"
 log_level = "info"
 
 [git]
@@ -366,9 +366,9 @@ default_format = "markdown"
 template_directory = "~/.config/ktme/templates"
 
 [confluence]
-base_url = "https://your-domain.atlassian.net"
+base_url = "https://your-company.atlassian.net"
 auth_type = "token"
-space_key = "DEV"
+space_key = "DOCS"
 ```
 
 ### Environment Variables
@@ -393,7 +393,7 @@ cache_path = "~/.config/ktme/knowledge.db"
 embedding_provider = "local"
 
 # Confluence spaces to sync
-sync_spaces = ["MOBILE", "BACKEND", "SHARED"]
+sync_spaces = ["DEV", "API", "DOCS"]
 
 # Auto-sync interval in hours (0 = manual only)
 auto_sync_interval = 0
@@ -510,11 +510,11 @@ graph TB
 
 ```bash
 # Initial full sync from Confluence
-ktme sync --space MOBILE --full
-ktme sync --space BACKEND --full
+ktme sync --space DEV --full
+ktme sync --space API --full
 
 # Incremental sync (only changed documents)
-ktme sync --space MOBILE
+ktme sync --space DEV
 
 # Sync all configured spaces
 ktme sync --all
@@ -524,13 +524,13 @@ ktme sync --all
 
 ```bash
 # CLI search
-ktme search "food home list resto"
+ktme search "user dashboard overview"
 ktme search "payment integration" --team mobile
 ktme search "authentication flow" --tag "feature:auth"
 
 # Via MCP (AI assistant uses these tools)
-# search_knowledge("food home list resto")
-# search_knowledge("how does the order API work", team="backend")
+# search_knowledge("user dashboard overview")
+# search_knowledge("how does the API gateway work", team="backend")
 ```
 
 ### Tagging Documents
@@ -539,8 +539,8 @@ Documents can be tagged for better organization:
 
 ```bash
 # Add tags to indexed documents
-ktme tag DOC_ID --team mobile --tag "screen:food_home"
-ktme tag DOC_ID --tag "feature:restaurant_list"
+ktme tag DOC_ID --team mobile --tag "screen:user_dashboard"
+ktme tag DOC_ID --tag "feature:main_screen"
 
 # Search by tags
 ktme search --tag "screen:*" --team mobile
@@ -574,20 +574,20 @@ Features are planned to represent logical units like mobile screens, components,
 
 ```bash
 # Add a feature (mobile screen)
-ktme feature add food_home_screen \
+ktme feature add user_dashboard \
     --team mobile \
-    --display-name "Food Home Screen" \
-    --aliases "food home,resto list,home screen"
+    --display-name "User Dashboard Screen" \
+    --aliases "dashboard,main screen,overview"
 
 # Map feature to documentation
-ktme feature map food_home_screen \
-    --doc-url "https://confluence.company.com/display/MOBILE/Food+Home"
+ktme feature map user_dashboard \
+    --doc-url "https://confluence.company.com/display/MOBILE/User+Dashboard"
 
 # Link feature to backend service
-ktme feature link food_home_screen --service restaurant-api
+ktme feature link user_dashboard --service api-gateway
 
 # Get feature with all related docs
-ktme feature get food_home_screen
+ktme feature get user_dashboard
 ```
 
 **Planned Feature-Service-Document Relationships:**
@@ -595,37 +595,37 @@ ktme feature get food_home_screen
 ```
 Feature (Mobile)          Service (Backend)       Document (Confluence)
 ----------------          -----------------       ---------------------
-food_home_screen    <---> restaurant-api    ---> "Food Home Design Doc"
-                    <---> order-api         ---> "Restaurant API Reference"
-                                            ---> "Order Flow Doc"
+user_dashboard      <---> api-gateway       ---> "User Dashboard Design Doc"
+                    <---> user-service      ---> "User API Reference"
+                                            ---> "Authentication Flow"
 ```
 
 ### Example: Mobile Team Searching Documentation
 
 ```
-Mobile Dev in Cursor: "Find docs about the food home list resto screen"
+Mobile Dev in Cursor: "Find docs about the user dashboard screen"
 
-AI Assistant calls: search_knowledge("food home list resto screen")
+AI Assistant calls: search_knowledge("user dashboard screen")
 
 System searches:
-1. Features FTS: Matches "food_home_screen" via alias "food home"
-2. Documents FTS: Matches documents containing "resto list"
+1. Features FTS: Matches "user_dashboard" via alias "dashboard"
+2. Documents FTS: Matches documents containing "user interface"
 3. Returns merged results with feature->document mappings
 
 Results returned:
-1. "Food Home Screen - Restaurant List"
-   URL: https://confluence.company.com/display/MOBILE/Food+Home
+1. "User Dashboard - Main Interface"
+   URL: https://confluence.company.com/display/MOBILE/User+Dashboard
    Team: mobile
-   Feature: food_home_screen
-   Related Services: [restaurant-api, order-api]
-   Summary: "The food home screen displays a list of nearby restaurants..."
+   Feature: user_dashboard
+   Related Services: [api-gateway, user-service]
+   Summary: "The user dashboard displays account information and recent activity..."
 
-2. "Restaurant API Integration"
-   URL: https://confluence.company.com/display/BACKEND/Restaurant+API
+2. "API Gateway Documentation"
+   URL: https://confluence.company.com/display/BACKEND/API+Gateway
    Team: backend
-   Service: restaurant-api
-   Related Features: [food_home_screen, resto_list]
-   Summary: "API endpoints for fetching restaurant data..."
+   Service: api-gateway
+   Related Features: [user_dashboard, authentication]
+   Summary: "Central gateway for routing API requests to backend services..."
 ```
 
 ## Usage Examples
@@ -636,10 +636,10 @@ Results returned:
 
 ```bash
 # Extract changes from feature branch
-ktme extract --commit main..feature/new-api --output /tmp/feature.json
+ktme extract --commit main..feature/new-auth --output /tmp/feature.json
 
 # Generate documentation
-ktme generate --input /tmp/feature.json --service api-gateway --type api-doc
+ktme generate --input /tmp/feature.json --service user-service --type api-doc
 ```
 
 ### Update Changelog from PR (Planned)
@@ -649,7 +649,7 @@ ktme generate --input /tmp/feature.json --service api-gateway --type api-doc
 ktme extract --pr 456 --provider github
 
 # Update changelog section
-ktme update --pr 456 --service user-service --section "Changelog"
+ktme update --pr 456 --service api-gateway --section "Changelog"
 ```
 
 ### Publish to Confluence (Planned)
@@ -660,8 +660,8 @@ export CONFLUENCE_API_TOKEN="your-token"
 ktme config set confluence.base_url "https://company.atlassian.net"
 
 # Map and generate
-ktme mapping add auth-service --url "https://company.atlassian.net/wiki/spaces/DEV/pages/12345"
-ktme generate --commit abc123 --service auth-service --format confluence
+ktme mapping add user-service --url "https://company.atlassian.net/wiki/spaces/DOCS/pages/12345"
+ktme generate --commit abc123 --service user-service --format confluence
 ```
 
 ### Document Staged Changes (Planned)
