@@ -332,6 +332,82 @@ impl McpServer {
                                 },
                                 "required": ["service", "doc_path", "content"]
                             }
+                        }),
+                        json!({
+                            "name": "search_services",
+                            "description": "Search services by query with relevance scoring",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "query": {
+                                        "type": "string",
+                                        "description": "Search query string"
+                                    }
+                                },
+                                "required": ["query"]
+                            }
+                        }),
+                        json!({
+                            "name": "search_by_feature",
+                            "description": "Search services by specific feature or functionality",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "feature": {
+                                        "type": "string",
+                                        "description": "Feature to search for"
+                                    }
+                                },
+                                "required": ["feature"]
+                            }
+                        }),
+                        json!({
+                            "name": "search_by_keyword",
+                            "description": "Search services by keyword with flexible matching",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "keyword": {
+                                        "type": "string",
+                                        "description": "Keyword to search for"
+                                    }
+                                },
+                                "required": ["keyword"]
+                            }
+                        }),
+                        json!({
+                            "name": "automated_documentation_workflow",
+                            "description": "Automated workflow: extract changes → generate documentation → save to mapped location",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "service": {
+                                        "type": "string",
+                                        "description": "Service name"
+                                    },
+                                    "source": {
+                                        "type": "string",
+                                        "description": "Source identifier (commit hash, 'staged', or file path)"
+                                    }
+                                },
+                                "required": ["service", "source"]
+                            }
+                        }),
+                        json!({
+                            "name": "detect_service_name",
+                            "description": "Detect service name from current directory with AI fallback",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {}
+                            }
+                        }),
+                        json!({
+                            "name": "get_repository_info",
+                            "description": "Get information about the current Git repository and directory",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {}
+                            }
                         })
                     ];
 
@@ -492,6 +568,189 @@ impl McpServer {
                         let content = arguments.get("content").and_then(|c| c.as_str()).unwrap_or("");
 
                         match McpTools::update_documentation(service, doc_path, content) {
+                            Ok(result) => {
+                                let response = json!({
+                                    "jsonrpc": "2.0",
+                                    "id": id,
+                                    "result": {
+                                        "content": [{
+                                            "type": "text",
+                                            "text": result
+                                        }]
+                                    }
+                                });
+                                self.send_response(&response, writer)?;
+                            }
+                            Err(e) => {
+                                let response = json!({
+                                    "jsonrpc": "2.0",
+                                    "id": id,
+                                    "error": {
+                                        "code": -32000,
+                                        "message": "Tool execution failed",
+                                        "data": e.to_string()
+                                    }
+                                });
+                                self.send_response(&response, writer)?;
+                            }
+                        }
+                    }
+                    "search_services" => {
+                        if let Some(query) = arguments.get("query").and_then(|q| q.as_str()) {
+                            match McpTools::search_services(query) {
+                                Ok(result) => {
+                                    let response = json!({
+                                        "jsonrpc": "2.0",
+                                        "id": id,
+                                        "result": {
+                                            "content": [{
+                                                "type": "text",
+                                                "text": result
+                                            }]
+                                        }
+                                    });
+                                    self.send_response(&response, writer)?;
+                                }
+                                Err(e) => {
+                                    let response = json!({
+                                        "jsonrpc": "2.0",
+                                        "id": id,
+                                        "error": {
+                                            "code": -32000,
+                                            "message": "Tool execution failed",
+                                            "data": e.to_string()
+                                        }
+                                    });
+                                    self.send_response(&response, writer)?;
+                                }
+                            }
+                        }
+                    }
+                    "search_by_feature" => {
+                        if let Some(feature) = arguments.get("feature").and_then(|f| f.as_str()) {
+                            match McpTools::search_by_feature(feature) {
+                                Ok(result) => {
+                                    let response = json!({
+                                        "jsonrpc": "2.0",
+                                        "id": id,
+                                        "result": {
+                                            "content": [{
+                                                "type": "text",
+                                                "text": result
+                                            }]
+                                        }
+                                    });
+                                    self.send_response(&response, writer)?;
+                                }
+                                Err(e) => {
+                                    let response = json!({
+                                        "jsonrpc": "2.0",
+                                        "id": id,
+                                        "error": {
+                                            "code": -32000,
+                                            "message": "Tool execution failed",
+                                            "data": e.to_string()
+                                        }
+                                    });
+                                    self.send_response(&response, writer)?;
+                                }
+                            }
+                        }
+                    }
+                    "search_by_keyword" => {
+                        if let Some(keyword) = arguments.get("keyword").and_then(|k| k.as_str()) {
+                            match McpTools::search_by_keyword(keyword) {
+                                Ok(result) => {
+                                    let response = json!({
+                                        "jsonrpc": "2.0",
+                                        "id": id,
+                                        "result": {
+                                            "content": [{
+                                                "type": "text",
+                                                "text": result
+                                            }]
+                                        }
+                                    });
+                                    self.send_response(&response, writer)?;
+                                }
+                                Err(e) => {
+                                    let response = json!({
+                                        "jsonrpc": "2.0",
+                                        "id": id,
+                                        "error": {
+                                            "code": -32000,
+                                            "message": "Tool execution failed",
+                                            "data": e.to_string()
+                                        }
+                                    });
+                                    self.send_response(&response, writer)?;
+                                }
+                            }
+                        }
+                    }
+                    "automated_documentation_workflow" => {
+                        let service = arguments.get("service").and_then(|s| s.as_str()).unwrap_or("");
+                        let source = arguments.get("source").and_then(|s| s.as_str()).unwrap_or("");
+
+                        match McpTools::automated_documentation_workflow(service, source) {
+                            Ok(result) => {
+                                let response = json!({
+                                    "jsonrpc": "2.0",
+                                    "id": id,
+                                    "result": {
+                                        "content": [{
+                                            "type": "text",
+                                            "text": result
+                                        }]
+                                    }
+                                });
+                                self.send_response(&response, writer)?;
+                            }
+                            Err(e) => {
+                                let response = json!({
+                                    "jsonrpc": "2.0",
+                                    "id": id,
+                                    "error": {
+                                        "code": -32000,
+                                        "message": "Tool execution failed",
+                                        "data": e.to_string()
+                                    }
+                                });
+                                self.send_response(&response, writer)?;
+                            }
+                        }
+                    }
+                    "detect_service_name" => {
+                        match McpTools::detect_service_name() {
+                            Ok(result) => {
+                                let response = json!({
+                                    "jsonrpc": "2.0",
+                                    "id": id,
+                                    "result": {
+                                        "content": [{
+                                            "type": "text",
+                                            "text": result
+                                        }]
+                                    }
+                                });
+                                self.send_response(&response, writer)?;
+                            }
+                            Err(e) => {
+                                let response = json!({
+                                    "jsonrpc": "2.0",
+                                    "id": id,
+                                    "error": {
+                                        "code": -32000,
+                                        "message": "Tool execution failed",
+                                        "data": e.to_string()
+                                    }
+                                });
+                                self.send_response(&response, writer)?;
+                            }
+                        }
+                    }
+                    "get_repository_info" => {
+                        match McpTools::get_repository_info() {
                             Ok(result) => {
                                 let response = json!({
                                     "jsonrpc": "2.0",
