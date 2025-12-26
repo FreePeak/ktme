@@ -8,6 +8,7 @@ mod doc;
 mod error;
 mod git;
 mod mcp;
+mod service_detector;
 mod storage;
 
 use error::Result;
@@ -112,6 +113,15 @@ enum Commands {
         command: McpCommands,
     },
 
+    /// Search services by features or keywords
+    Search {
+        query: String,
+        #[arg(long, help = "Search for specific features")]
+        feature: bool,
+        #[arg(long, help = "Search by keyword")]
+        keyword: bool,
+    },
+
     /// Configuration management
     Config {
         #[command(subcommand)]
@@ -123,7 +133,8 @@ enum Commands {
 enum MappingCommands {
     /// Add a service mapping
     Add {
-        service: String,
+        #[arg(help = "Service name (auto-detected if not provided)")]
+        service: Option<String>,
         #[arg(long, group = "location")]
         url: Option<String>,
         #[arg(long, group = "location")]
@@ -298,6 +309,9 @@ async fn main() -> Result<()> {
             McpCommands::Stop => {
                 cli::commands::mcp::stop().await?;
             }
+        },
+        Commands::Search { query, feature, keyword } => {
+            cli::commands::search::execute(query, feature, keyword).await?;
         },
         Commands::Config { command } => match command {
             ConfigCommands::Init => {

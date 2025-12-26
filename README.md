@@ -12,7 +12,29 @@ KTME is a powerful tool for tracking, managing, and generating documentation fro
 
 ## Recent Changes
 
-### SQLite Database Support (Latest)
+### AI Agent Knowledge Management (Latest)
+
+KTME now provides comprehensive support for AI agents with advanced knowledge tree mapping and document synchronization capabilities.
+
+#### New Features
+- **Intelligent Service Detection**: Automatic detection of service names from Git repositories
+- **Mock AI Provider**: Built-in documentation generation without requiring API keys
+- **Advanced Search**: Feature and keyword-based search with relevance scoring
+- **MCP Server Integration**: Enhanced Model Context Protocol server with AI agent tools
+
+#### Documentation Generation
+```bash
+# Generate documentation from staged changes
+ktme generate --service ktme --staged --type api-doc
+
+# Generate changelog
+ktme generate --service ktme --staged --type changelog
+
+# Output to file
+ktme generate --service ktme --staged --output docs/my-docs.md
+```
+
+### SQLite Database Support
 
 The project has been enhanced with SQLite database support for improved performance and scalability:
 
@@ -38,6 +60,76 @@ The `StorageManager` now supports:
 - Database initialization and migration
 - Service listing from database
 - Database statistics retrieval
+
+## Upcoming Features
+
+### 🚧 Advanced Knowledge Management (Planned)
+
+#### Feature Mapping System
+- **Feature Relationships**: Track parent-child relationships and dependencies between features
+- **Relevance Scoring**: Intelligent scoring of feature-document relationships
+- **Cross-Service Mapping**: Discover relationships between features across different services
+- **Automated Extraction**: Automatically extract features from code and documentation
+
+#### AI Agent Integration
+- **Knowledge Tree**: Hierarchical organization of services, features, and documentation
+- **Context-Aware Search**: Understand user intent and provide relevant results
+- **Semantic Search**: Vector-based search for finding related content
+- **Multi-Modal Support**: Search across code, documentation, and examples
+
+#### Cloud Synchronization
+- **Multi-Provider Support**: Sync with Confluence, GitHub, Notion, and S3
+- **Bi-Directional Sync**: Two-way synchronization with conflict resolution
+- **Version Tracking**: Keep track of document versions and changes
+- **Offline Support**: Work offline and sync when connected
+
+#### Enhanced MCP Tools
+```bash
+# Advanced feature search with context
+ktme_search_features --query "user authentication" --context "security"
+
+# Knowledge tree mapping
+ktme_map_knowledge --service "auth-service" --depth 3
+
+# Cloud synchronization
+ktme_sync_documents --provider confluence --workspace "team-docs"
+
+# Context-aware queries for AI agents
+ktme_query_context --service "payment" --features "fraud,detection"
+```
+
+#### Performance & Scalability
+- **Caching Layer**: Intelligent caching of search results and documents
+- **Incremental Sync**: Only sync changed documents to reduce bandwidth
+- **Background Processing**: Handle large repositories efficiently
+- **Rate Limiting**: Respect API limits for cloud providers
+
+### 🎯 AI Agent Knowledge Management Architecture
+
+KTME provides a comprehensive knowledge management system for AI agents:
+
+```mermaid
+graph TB
+    User[User/AI Agent] --> MCP[MCP Server Interface]
+    MCP --> KTME[KTME Core System]
+
+    subgraph "Local Knowledge Base"
+        KTME --> SQLite[(SQLite Database)]
+        KTME --> Docs[Markdown Documents]
+        SQLite --> Services[Service Registry]
+        SQLite --> Features[Feature Mapping]
+        SQLite --> Mappings[Document Mappings]
+    end
+
+    subgraph "Cloud Integration"
+        KTME --> CloudSync[Cloud Synchronization]
+        CloudSync --> CloudDocs[Cloud Documentation]
+        CloudSync --> Confluence[Confluence Wiki]
+        CloudSync --> GitHub[GitHub Wikis/Docs]
+    end
+```
+
+See [docs/architecture.md](docs/architecture.md) for detailed architecture diagrams and implementation plans.
 
 ## Installation
 

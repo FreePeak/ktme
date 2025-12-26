@@ -2,16 +2,25 @@ use crate::error::Result;
 use crate::storage::mapping::StorageManager;
 use std::path::Path;
 
-pub async fn add(service: String, url: Option<String>, file: Option<String>) -> Result<()> {
-    tracing::info!("Adding mapping for service: {}", service);
+pub async fn add(service: Option<String>, url: Option<String>, file: Option<String>) -> Result<()> {
+    // Auto-detect service name if not provided
+    let service_name = if let Some(s) = service {
+        s
+    } else {
+        tracing::info!("Auto-detecting service name...");
+        let detector = crate::service_detector::ServiceDetector::new()?;
+        detector.detect_with_ai_fallback().await?
+    };
+
+    tracing::info!("Adding mapping for service: {}", service_name);
 
     let storage = StorageManager::new()?;
 
     if let Some(location) = url {
         // Add URL mapping (typically Confluence)
         let location_clone = location.clone();
-        storage.add_mapping(service.clone(), "confluence".to_string(), location)?;
-        println!("✓ Added mapping: {} -> {}", service, location_clone);
+        storage.add_mapping(service_name.clone(), "confluence".to_string(), location)?;
+        println!("✓ Added mapping: {} -> {}", service_name, location_clone);
     } else if let Some(location) = file {
         // Add file mapping (local markdown)
         let path = Path::new(&location);
@@ -21,8 +30,8 @@ pub async fn add(service: String, url: Option<String>, file: Option<String>) -> 
             ));
         }
         let location_clone = location.clone();
-        storage.add_mapping(service.clone(), "markdown".to_string(), location)?;
-        println!("✓ Added mapping: {} -> {}", service, location_clone);
+        storage.add_mapping(service_name.clone(), "markdown".to_string(), location)?;
+        println!("✓ Added mapping: {} -> {}", service_name, location_clone);
     } else {
         return Err(crate::error::KtmeError::Config(
             "Either --url or --file must be provided".to_string()

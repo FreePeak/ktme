@@ -43,9 +43,20 @@ impl AIClient {
             let provider = AIProviderFactory::create_claude(config)?;
             Ok(Self { provider })
         } else {
-            Err(crate::error::KtmeError::Config(
-                "No AI provider configured. Set OPENAI_API_KEY or ANTHROPIC_API_KEY environment variable.".to_string()
-            ))
+            tracing::warn!("No AI provider configured. Using mock provider for testing.");
+            let provider = AIProviderFactory::create_mock()?;
+            Ok(Self { provider })
+        }
+    }
+
+    pub fn new_with_fallback() -> Result<Self> {
+        match Self::new() {
+            Ok(client) => Ok(client),
+            Err(_) => {
+                tracing::warn!("AI client creation failed, using mock provider");
+                let provider = AIProviderFactory::create_mock()?;
+                Ok(Self { provider })
+            }
         }
     }
 
