@@ -1,6 +1,6 @@
 {
   "name": "ktme-cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Knowledge Transfer Me - Automated documentation generation from code changes using AI",
   "main": "index.js",
   "bin": {
