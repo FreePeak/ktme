@@ -230,7 +230,10 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // Check if we're in stdio mode for MCP
-    let is_stdio = if let Commands::Mcp { command: McpCommands::Start { stdio, .. } } = &cli.command {
+    let is_stdio = if let Commands::Mcp {
+        command: McpCommands::Start { stdio, .. },
+    } = &cli.command
+    {
         *stdio
     } else {
         false
@@ -300,7 +303,11 @@ async fn main() -> Result<()> {
             }
         },
         Commands::Mcp { command } => match command {
-            McpCommands::Start { config, daemon, stdio } => {
+            McpCommands::Start {
+                config,
+                daemon,
+                stdio,
+            } => {
                 cli::commands::mcp::start(config, daemon, stdio).await?;
             }
             McpCommands::Status => {
@@ -310,9 +317,13 @@ async fn main() -> Result<()> {
                 cli::commands::mcp::stop().await?;
             }
         },
-        Commands::Search { query, feature, keyword } => {
+        Commands::Search {
+            query,
+            feature,
+            keyword,
+        } => {
             cli::commands::search::execute(query, feature, keyword).await?;
-        },
+        }
         Commands::Config { command } => match command {
             ConfigCommands::Init => {
                 cli::commands::config::init().await?;

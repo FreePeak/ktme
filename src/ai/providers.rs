@@ -71,7 +71,10 @@ impl OpenAIProvider {
 #[async_trait]
 impl AIProvider for OpenAIProvider {
     async fn generate(&self, prompt: &str) -> Result<String> {
-        let base_url = self.config.base_url.as_deref()
+        let base_url = self
+            .config
+            .base_url
+            .as_deref()
             .unwrap_or("https://api.openai.com/v1");
 
         let request_body = serde_json::json!({
@@ -86,7 +89,8 @@ impl AIProvider for OpenAIProvider {
             "temperature": self.config.temperature
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post(&format!("{}/chat/completions", base_url))
             .header("Authorization", format!("Bearer {}", self.config.api_key))
             .header("Content-Type", "application/json")
@@ -98,9 +102,10 @@ impl AIProvider for OpenAIProvider {
         let status = response.status();
         if !status.is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(crate::error::KtmeError::ApiError(
-                format!("OpenAI API error: {} - {}", status, error_text)
-            ));
+            return Err(crate::error::KtmeError::ApiError(format!(
+                "OpenAI API error: {} - {}",
+                status, error_text
+            )));
         }
 
         #[derive(Deserialize)]
@@ -118,10 +123,13 @@ impl AIProvider for OpenAIProvider {
             content: String,
         }
 
-        let openai_response: OpenAIResponse = response.json().await
+        let openai_response: OpenAIResponse = response
+            .json()
+            .await
             .map_err(|e| crate::error::KtmeError::DeserializationError(e.to_string()))?;
 
-        openai_response.choices
+        openai_response
+            .choices
             .into_iter()
             .next()
             .ok_or_else(|| crate::error::KtmeError::ApiError("No response from OpenAI".to_string()))
@@ -165,7 +173,8 @@ impl AIProvider for ClaudeProvider {
             ]
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post("https://api.anthropic.com/v1/messages")
             .header("x-api-key", &self.config.api_key)
             .header("anthropic-version", "2023-06-01")
@@ -178,9 +187,10 @@ impl AIProvider for ClaudeProvider {
         let status = response.status();
         if !status.is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(crate::error::KtmeError::ApiError(
-                format!("Claude API error: {} - {}", status, error_text)
-            ));
+            return Err(crate::error::KtmeError::ApiError(format!(
+                "Claude API error: {} - {}",
+                status, error_text
+            )));
         }
 
         #[derive(Deserialize)]
@@ -195,14 +205,19 @@ impl AIProvider for ClaudeProvider {
             text: String,
         }
 
-        let claude_response: ClaudeResponse = response.json().await
+        let claude_response: ClaudeResponse = response
+            .json()
+            .await
             .map_err(|e| crate::error::KtmeError::DeserializationError(e.to_string()))?;
 
-        claude_response.content
+        claude_response
+            .content
             .into_iter()
             .find(|c| c.content_type == "text")
             .map(|c| c.text)
-            .ok_or_else(|| crate::error::KtmeError::ApiError("No text response from Claude".to_string()))
+            .ok_or_else(|| {
+                crate::error::KtmeError::ApiError("No text response from Claude".to_string())
+            })
     }
 
     fn provider_name(&self) -> &'static str {
@@ -225,7 +240,10 @@ impl AIProvider for MockProvider {
         tracing::info!("Using mock provider to generate documentation");
 
         // Simple mock documentation generation based on prompt analysis
-        let documentation = if prompt.contains("API") || prompt.contains("endpoint") || prompt.contains("api-doc") {
+        let documentation = if prompt.contains("API")
+            || prompt.contains("endpoint")
+            || prompt.contains("api-doc")
+        {
             format!(
                 "# API Documentation
 

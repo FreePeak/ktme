@@ -25,16 +25,17 @@ pub async fn add(service: Option<String>, url: Option<String>, file: Option<Stri
         // Add file mapping (local markdown)
         let path = Path::new(&location);
         if !path.exists() {
-            return Err(crate::error::KtmeError::Config(
-                format!("File does not exist: {}", location)
-            ));
+            return Err(crate::error::KtmeError::Config(format!(
+                "File does not exist: {}",
+                location
+            )));
         }
         let location_clone = location.clone();
         storage.add_mapping(service_name.clone(), "markdown".to_string(), location)?;
         println!("✓ Added mapping: {} -> {}", service_name, location_clone);
     } else {
         return Err(crate::error::KtmeError::Config(
-            "Either --url or --file must be provided".to_string()
+            "Either --url or --file must be provided".to_string(),
         ));
     }
 
@@ -49,7 +50,9 @@ pub async fn list(service: Option<String>) -> Result<()> {
 
     if mappings.services.is_empty() {
         println!("No service mappings found.");
-        println!("Use 'ktme mapping add <service> --url <url>' or '--file <file>' to add mappings.");
+        println!(
+            "Use 'ktme mapping add <service> --url <url>' or '--file <file>' to add mappings."
+        );
         return Ok(());
     }
 
@@ -155,7 +158,10 @@ pub async fn edit() -> Result<()> {
     let storage = StorageManager::new()?;
     let mappings_file = storage.mappings_file_path();
 
-    println!("Opening mappings file for editing: {}", mappings_file.display());
+    println!(
+        "Opening mappings file for editing: {}",
+        mappings_file.display()
+    );
 
     // Try to open with default editor
     #[cfg(target_os = "macos")]

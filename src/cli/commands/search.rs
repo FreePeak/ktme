@@ -13,16 +13,33 @@ pub async fn execute(query: String, feature: bool, keyword: bool) -> Result<()> 
     };
 
     if results.is_empty() {
-        let search_type = if feature { "feature" } else if keyword { "keyword" } else { "services" };
+        let search_type = if feature {
+            "feature"
+        } else if keyword {
+            "keyword"
+        } else {
+            "services"
+        };
         println!("No {} found matching: {}", search_type, query);
         return Ok(());
     }
 
-    let search_type = if feature { "Features" } else if keyword { "Keywords" } else { "Services" };
+    let search_type = if feature {
+        "Features"
+    } else if keyword {
+        "Keywords"
+    } else {
+        "Services"
+    };
     println!("{} matching '{}':\n", search_type, query);
 
     for (idx, result) in results.iter().enumerate() {
-        println!("{}. **{}** (Relevance: {:.1})", idx + 1, result.name, result.relevance_score);
+        println!(
+            "{}. **{}** (Relevance: {:.1})",
+            idx + 1,
+            result.name,
+            result.relevance_score
+        );
 
         if let Some(ref desc) = result.description {
             println!("   📝 {}", desc);

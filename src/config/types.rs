@@ -26,6 +26,8 @@ pub struct GitConfig {
     pub include_merge_commits: bool,
     #[serde(default = "default_max_commit_range")]
     pub max_commit_range: u32,
+    pub github_token: Option<String>,
+    pub gitlab_token: Option<String>,
 }
 
 impl Default for GitConfig {
@@ -34,6 +36,8 @@ impl Default for GitConfig {
             default_branch: default_branch(),
             include_merge_commits: false,
             max_commit_range: default_max_commit_range(),
+            github_token: None,
+            gitlab_token: None,
         }
     }
 }

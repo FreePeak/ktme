@@ -1,5 +1,5 @@
-use crate::git::diff::ExtractedDiff;
 use crate::error::Result;
+use crate::git::diff::ExtractedDiff;
 
 pub struct PromptTemplates;
 
@@ -18,11 +18,16 @@ impl PromptTemplates {
         };
 
         let diff_summary = Self::format_diff_summary(diff);
-        let context_section = context.map(|c| format!("\nAdditional Context:\n{}\n", c)).unwrap_or_default();
+        let context_section = context
+            .map(|c| format!("\nAdditional Context:\n{}\n", c))
+            .unwrap_or_default();
 
         Ok(format!(
             "{}\n\n{}{}\n\nChanges:\n{}",
-            base_prompt, context_section, diff_summary, Self::format_diff_content(diff)
+            base_prompt,
+            context_section,
+            diff_summary,
+            Self::format_diff_content(diff)
         ))
     }
 
@@ -194,9 +199,7 @@ Generate documentation in Markdown format."#.to_string()
         for file in &diff.files {
             content.push_str(&format!(
                 "\n## File: {} ({})\n```\n{}\n```\n",
-                file.path,
-                file.status,
-                file.diff
+                file.path, file.status, file.diff
             ));
         }
 
@@ -217,7 +220,9 @@ Generate documentation in Markdown format."#.to_string()
 
         Ok(format!(
             "{}\n\n{}\n\nChanges:\n{}",
-            base_prompt, diff_summary, Self::format_diff_content(diff)
+            base_prompt,
+            diff_summary,
+            Self::format_diff_content(diff)
         ))
     }
 }

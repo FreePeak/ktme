@@ -1,5 +1,5 @@
+use crate::storage::models::ProviderConfig as DbProviderConfig;
 use serde::{Deserialize, Serialize};
-use crate::storage::models::{ProviderConfig as DbProviderConfig};
 
 /// Provider configuration from database
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,7 +41,6 @@ pub struct ConfluenceConfig {
     pub is_cloud: bool,
 }
 
-
 fn default_true() -> bool {
     true
 }
@@ -55,7 +54,6 @@ pub struct MarkdownConfig {
     #[serde(default = "default_true")]
     pub auto_create_dirs: bool,
 }
-
 
 fn default_extension() -> String {
     "md".to_string()
@@ -89,7 +87,8 @@ impl ProviderRegistry {
     }
 
     pub fn get_default_provider(&self) -> Option<&ProviderConfig> {
-        self.default_provider.as_ref()
+        self.default_provider
+            .as_ref()
             .and_then(|ptype| self.providers.get(ptype))
     }
 

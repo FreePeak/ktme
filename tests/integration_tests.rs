@@ -14,7 +14,7 @@ fn test_cli_help() {
 #[test]
 fn test_extract_command() {
     #[allow(deprecated)]
-let mut cmd = Command::cargo_bin("ktme").unwrap();
+    let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&["extract", "--commit", "HEAD"]);
 
     // Should succeed in a git repository
@@ -28,10 +28,11 @@ fn test_extract_output_to_file() -> Result<(), Box<dyn std::error::Error>> {
     let output_path = temp_dir.path().join("test_diff.json");
 
     #[allow(deprecated)]
-let mut cmd = Command::cargo_bin("ktme").unwrap();
+    let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&[
         "extract",
-        "--commit", "HEAD",
+        "--commit",
+        "HEAD",
         "--output",
         output_path.to_str().unwrap(),
     ]);
@@ -50,12 +51,8 @@ let mut cmd = Command::cargo_bin("ktme").unwrap();
 #[test]
 fn test_generate_command_without_ai_key() {
     #[allow(deprecated)]
-let mut cmd = Command::cargo_bin("ktme").unwrap();
-    cmd.args(&[
-        "generate",
-        "--commit", "HEAD",
-        "--service", "test-service",
-    ]);
+    let mut cmd = Command::cargo_bin("ktme").unwrap();
+    cmd.args(&["generate", "--commit", "HEAD", "--service", "test-service"]);
 
     // Should fail without AI API key
     cmd.assert().failure();
@@ -84,11 +81,13 @@ fn test_generate_command_with_input_file() -> Result<(), Box<dyn std::error::Err
     fs::write(&diff_path, test_diff)?;
 
     #[allow(deprecated)]
-let mut cmd = Command::cargo_bin("ktme").unwrap();
+    let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&[
         "generate",
-        "--input", diff_path.to_str().unwrap(),
-        "--service", "test-service",
+        "--input",
+        diff_path.to_str().unwrap(),
+        "--service",
+        "test-service",
     ]);
 
     // Should still fail due to no AI key, but after processing the input
@@ -104,10 +103,11 @@ fn test_extract_and_generate_pipeline() -> Result<(), Box<dyn std::error::Error>
 
     // First extract changes
     #[allow(deprecated)]
-let mut cmd = Command::cargo_bin("ktme").unwrap();
+    let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&[
         "extract",
-        "--commit", "HEAD",
+        "--commit",
+        "HEAD",
         "--output",
         diff_path.to_str().unwrap(),
     ]);
@@ -117,12 +117,15 @@ let mut cmd = Command::cargo_bin("ktme").unwrap();
 
     // Then try to generate (will fail without AI key, but pipeline works)
     #[allow(deprecated)]
-let mut cmd = Command::cargo_bin("ktme").unwrap();
+    let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&[
         "generate",
-        "--input", diff_path.to_str().unwrap(),
-        "--service", "test-service",
-        "--doc-type", "changelog",
+        "--input",
+        diff_path.to_str().unwrap(),
+        "--service",
+        "test-service",
+        "--doc-type",
+        "changelog",
     ]);
 
     cmd.assert().failure(); // Expected without AI key

@@ -1,7 +1,7 @@
-use crate::error::{KtmeError, Result};
 use crate::ai::AIClient;
-use std::path::PathBuf;
+use crate::error::{KtmeError, Result};
 use std::fs;
+use std::path::PathBuf;
 
 pub struct ServiceDetector {
     current_dir: PathBuf,
@@ -9,8 +9,7 @@ pub struct ServiceDetector {
 
 impl ServiceDetector {
     pub fn new() -> Result<Self> {
-        let current_dir = std::env::current_dir()
-            .map_err(|e| KtmeError::Io(e))?;
+        let current_dir = std::env::current_dir().map_err(|e| KtmeError::Io(e))?;
 
         Ok(Self { current_dir })
     }
@@ -34,7 +33,8 @@ impl ServiceDetector {
         }
 
         // Strategy 3: Use current directory name as fallback
-        let dir_name = self.current_dir
+        let dir_name = self
+            .current_dir
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("unknown-service")
@@ -195,7 +195,8 @@ impl ServiceDetector {
         // Gather context about the current directory
         if let Ok(entries) = fs::read_dir(&self.current_dir) {
             context_info.push_str("Directory contents:\n");
-            for entry in entries.take(10) { // Limit to first 10 files
+            for entry in entries.take(10) {
+                // Limit to first 10 files
                 if let Ok(entry) = entry {
                     if let Some(name) = entry.file_name().to_str() {
                         context_info.push_str(&format!("  - {}\n", name));
@@ -229,10 +230,15 @@ impl ServiceDetector {
 
         match AIClient::new() {
             Ok(ai_client) => {
-                let response = ai_client.generate_documentation(&prompt).await
-                    .map_err(|e| KtmeError::Storage(format!("AI service detection failed: {}", e)))?;
+                let response = ai_client
+                    .generate_documentation(&prompt)
+                    .await
+                    .map_err(|e| {
+                        KtmeError::Storage(format!("AI service detection failed: {}", e))
+                    })?;
 
-                let service_name = response.trim()
+                let service_name = response
+                    .trim()
                     .lines()
                     .next()
                     .unwrap_or("unknown-service")

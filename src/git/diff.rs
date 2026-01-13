@@ -14,24 +14,23 @@ pub struct DiffExtractor {
 impl DiffExtractor {
     pub fn new(source: String, identifier: String, path: Option<&str>) -> Result<Self> {
         let git_reader = GitReader::new(path)?;
-        Ok(Self { source, identifier, git_reader })
+        Ok(Self {
+            source,
+            identifier,
+            git_reader,
+        })
     }
 
     pub fn extract(&self) -> Result<ExtractedDiff> {
         tracing::info!("Extracting diff from {} {}", self.source, self.identifier);
 
         match self.source.as_str() {
-            "commit" => {
-                self.git_reader.read_commit(&self.identifier)
-            },
-            "staged" => {
-                self.git_reader.read_staged()
-            },
-            _ => {
-                Err(crate::error::KtmeError::InvalidInput(
-                    format!("Unsupported source type: {}", self.source)
-                ))
-            }
+            "commit" => self.git_reader.read_commit(&self.identifier),
+            "staged" => self.git_reader.read_staged(),
+            _ => Err(crate::error::KtmeError::InvalidInput(format!(
+                "Unsupported source type: {}",
+                self.source
+            ))),
         }
     }
 
@@ -39,14 +38,11 @@ impl DiffExtractor {
         tracing::info!("Extracting diff range from {} {}", self.source, range);
 
         match self.source.as_str() {
-            "commit" | "range" => {
-                self.git_reader.read_commit_range(range)
-            },
-            _ => {
-                Err(crate::error::KtmeError::InvalidInput(
-                    format!("Range extraction not supported for source type: {}", self.source)
-                ))
-            }
+            "commit" | "range" => self.git_reader.read_commit_range(range),
+            _ => Err(crate::error::KtmeError::InvalidInput(format!(
+                "Range extraction not supported for source type: {}",
+                self.source
+            ))),
         }
     }
 
@@ -58,10 +54,13 @@ impl DiffExtractor {
         Ok(RepositoryInfo {
             path,
             branch,
-            status: status.into_iter().map(|(path, status)| FileStatus {
-                path,
-                status: format!("{:?}", status),
-            }).collect(),
+            status: status
+                .into_iter()
+                .map(|(path, status)| FileStatus {
+                    path,
+                    status: format!("{:?}", status),
+                })
+                .collect(),
         })
     }
 }

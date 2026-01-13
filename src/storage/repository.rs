@@ -17,7 +17,12 @@ impl ServiceRepository {
         Self { db }
     }
 
-    pub fn create(&self, name: &str, path: Option<&str>, description: Option<&str>) -> Result<Service> {
+    pub fn create(
+        &self,
+        name: &str,
+        path: Option<&str>,
+        description: Option<&str>,
+    ) -> Result<Service> {
         let conn = self.db.connection()?;
 
         conn.execute(
@@ -245,7 +250,11 @@ impl DocumentMappingRepository {
         Ok(mappings)
     }
 
-    pub fn get_by_provider(&self, service_id: i64, provider: &str) -> Result<Option<DocumentMapping>> {
+    pub fn get_by_provider(
+        &self,
+        service_id: i64,
+        provider: &str,
+    ) -> Result<Option<DocumentMapping>> {
         let conn = self.db.connection()?;
 
         let result = conn.query_row(
@@ -347,7 +356,12 @@ impl ProviderConfigRepository {
         Self { db }
     }
 
-    pub fn save(&self, provider_type: &str, config: &serde_json::Value, is_default: bool) -> Result<()> {
+    pub fn save(
+        &self,
+        provider_type: &str,
+        config: &serde_json::Value,
+        is_default: bool,
+    ) -> Result<()> {
         let conn = self.db.connection()?;
 
         conn.execute(
@@ -387,7 +401,10 @@ impl ProviderConfigRepository {
         match result {
             Ok(config) => Ok(Some(config)),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(KtmeError::Storage(format!("Failed to get provider config: {}", e))),
+            Err(e) => Err(KtmeError::Storage(format!(
+                "Failed to get provider config: {}",
+                e
+            ))),
         }
     }
 
@@ -414,7 +431,10 @@ impl ProviderConfigRepository {
         match result {
             Ok(config) => Ok(Some(config)),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(KtmeError::Storage(format!("Failed to get default provider: {}", e))),
+            Err(e) => Err(KtmeError::Storage(format!(
+                "Failed to get default provider: {}",
+                e
+            ))),
         }
     }
 
@@ -451,11 +471,8 @@ impl ProviderConfigRepository {
         let conn = self.db.connection()?;
 
         // Clear existing default
-        conn.execute(
-            "UPDATE provider_configs SET is_default = FALSE",
-            [],
-        )
-        .map_err(|e| KtmeError::Storage(format!("Failed to clear default: {}", e)))?;
+        conn.execute("UPDATE provider_configs SET is_default = FALSE", [])
+            .map_err(|e| KtmeError::Storage(format!("Failed to clear default: {}", e)))?;
 
         // Set new default
         conn.execute(
@@ -730,15 +747,21 @@ impl FeatureRepository {
     ) -> Result<Feature> {
         let conn = self.db.connection()?;
 
-        let tags_json = serde_json::to_string(&tags)
-            .map_err(KtmeError::Serialization)?;
-        let metadata_json = serde_json::to_string(&metadata)
-            .map_err(KtmeError::Serialization)?;
+        let tags_json = serde_json::to_string(&tags).map_err(KtmeError::Serialization)?;
+        let metadata_json = serde_json::to_string(&metadata).map_err(KtmeError::Serialization)?;
 
         conn.execute(
             "INSERT INTO features (id, service_id, name, description, feature_type, tags, metadata)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-            params![id, service_id, name, description, feature_type.to_string(), tags_json, metadata_json],
+            params![
+                id,
+                service_id,
+                name,
+                description,
+                feature_type.to_string(),
+                tags_json,
+                metadata_json
+            ],
         )
         .map_err(|e| KtmeError::Storage(format!("Failed to create feature: {}", e)))?;
 
@@ -810,7 +833,8 @@ impl FeatureRepository {
                 let tags_json: String = row.get(5)?;
                 let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
                 let metadata_json: String = row.get(6)?;
-                let metadata: serde_json::Value = serde_json::from_str(&metadata_json).unwrap_or_default();
+                let metadata: serde_json::Value =
+                    serde_json::from_str(&metadata_json).unwrap_or_default();
                 let feature_type_str: String = row.get(4)?;
                 let feature_type = match feature_type_str.as_str() {
                     "api" => FeatureType::Api,
@@ -869,15 +893,22 @@ impl FeatureRepository {
             LEFT JOIN search_index si ON f.id = si.feature_id
             LEFT JOIN document_mappings dm ON f.id = dm.feature_id
             WHERE 1=1
-        ".to_string();
+        "
+        .to_string();
 
         let mut params = Vec::new();
 
         // Add service filter
         if let Some(service_ids) = &query.service_ids {
             if !service_ids.is_empty() {
-                sql.push_str(&format!(" AND f.service_id IN ({})",
-                    service_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",")));
+                sql.push_str(&format!(
+                    " AND f.service_id IN ({})",
+                    service_ids
+                        .iter()
+                        .map(|_| "?")
+                        .collect::<Vec<_>>()
+                        .join(",")
+                ));
                 for id in service_ids {
                     params.push(id.to_string());
                 }
@@ -887,8 +918,14 @@ impl FeatureRepository {
         // Add feature type filter
         if let Some(feature_types) = &query.feature_types {
             if !feature_types.is_empty() {
-                sql.push_str(&format!(" AND f.feature_type IN ({})",
-                    feature_types.iter().map(|_| "?").collect::<Vec<_>>().join(",")));
+                sql.push_str(&format!(
+                    " AND f.feature_type IN ({})",
+                    feature_types
+                        .iter()
+                        .map(|_| "?")
+                        .collect::<Vec<_>>()
+                        .join(",")
+                ));
                 for ft in feature_types {
                     params.push(ft.to_string());
                 }
@@ -912,7 +949,8 @@ impl FeatureRepository {
         // Add limit parameter
         params.push(limit.to_string());
 
-        let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+        let param_refs: Vec<&dyn rusqlite::ToSql> =
+            params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
 
         let results = stmt
             .query_map(&param_refs[..], |row| {
@@ -990,7 +1028,11 @@ mod tests {
 
         // Create
         let service = repo
-            .create("test-service", Some("/path/to/service"), Some("Test description"))
+            .create(
+                "test-service",
+                Some("/path/to/service"),
+                Some("Test description"),
+            )
             .expect("Failed to create service");
         assert_eq!(service.name, "test-service");
 
@@ -1006,7 +1048,9 @@ mod tests {
         assert_eq!(services.len(), 1);
 
         // Delete
-        let deleted = repo.delete("test-service").expect("Failed to delete service");
+        let deleted = repo
+            .delete("test-service")
+            .expect("Failed to delete service");
         assert!(deleted);
 
         // Verify deleted
@@ -1027,7 +1071,14 @@ mod tests {
 
         // Add mapping
         let mapping = mapping_repo
-            .add(service.id, "confluence", "12345", Some("Test Doc"), None, true)
+            .add(
+                service.id,
+                "confluence",
+                "12345",
+                Some("Test Doc"),
+                None,
+                true,
+            )
             .expect("Failed to add mapping");
         assert_eq!(mapping.provider, "confluence");
         assert!(mapping.is_primary);

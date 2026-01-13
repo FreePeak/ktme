@@ -1,5 +1,5 @@
+use crate::ai::providers::{AIProvider, AIProviderFactory, ClaudeConfig, OpenAIConfig};
 use crate::error::Result;
-use crate::ai::providers::{AIProvider, AIProviderFactory, OpenAIConfig, ClaudeConfig};
 use std::env;
 
 pub struct AIClient {
@@ -29,7 +29,8 @@ impl AIClient {
         } else if let Ok(api_key) = env::var("ANTHROPIC_API_KEY") {
             let config = ClaudeConfig {
                 api_key,
-                model: env::var("CLAUDE_MODEL").unwrap_or_else(|_| "claude-3-sonnet-20240229".to_string()),
+                model: env::var("CLAUDE_MODEL")
+                    .unwrap_or_else(|_| "claude-3-sonnet-20240229".to_string()),
                 max_tokens: env::var("CLAUDE_MAX_TOKENS")
                     .ok()
                     .and_then(|s| s.parse().ok())
@@ -61,7 +62,10 @@ impl AIClient {
     }
 
     pub async fn generate_documentation(&self, prompt: &str) -> Result<String> {
-        tracing::info!("Generating documentation using {}", self.provider.provider_name());
+        tracing::info!(
+            "Generating documentation using {}",
+            self.provider.provider_name()
+        );
 
         let response = self.provider.generate(prompt).await?;
 

@@ -10,7 +10,13 @@ pub async fn start(config: Option<String>, daemon: bool, stdio: bool) -> Result<
 
     let server_config = ServerConfig {
         server_name: "ktme-mcp-server".to_string(),
-        transport: if stdio { "stdio".to_string() } else if daemon { "sse".to_string() } else { "stdio".to_string() },
+        transport: if stdio {
+            "stdio".to_string()
+        } else if daemon {
+            "sse".to_string()
+        } else {
+            "stdio".to_string()
+        },
         port: if daemon || !stdio { Some(3000) } else { None },
     };
 
@@ -48,17 +54,21 @@ pub async fn status() -> Result<()> {
 
     // Try to connect to running server
     let client = reqwest::Client::new();
-    let response = client.get("http://localhost:3000/status")
-        .send()
-        .await;
+    let response = client.get("http://localhost:3000/status").send().await;
 
     match response {
         Ok(resp) if resp.status().is_success() => {
-            let body: serde_json::Value = resp.json().await
+            let body: serde_json::Value = resp
+                .json()
+                .await
                 .map_err(|e| crate::error::KtmeError::NetworkError(e.to_string()))?;
 
             println!("✅ MCP server is running");
-            println!("   Status: {}", body.get("status").unwrap_or(&serde_json::Value::String("unknown".to_string())));
+            println!(
+                "   Status: {}",
+                body.get("status")
+                    .unwrap_or(&serde_json::Value::String("unknown".to_string()))
+            );
             if let Some(version) = body.get("version") {
                 println!("   Version: {}", version);
             }
@@ -84,9 +94,7 @@ pub async fn stop() -> Result<()> {
 
     // Try to stop running server
     let client = reqwest::Client::new();
-    let response = client.post("http://localhost:3000/shutdown")
-        .send()
-        .await;
+    let response = client.post("http://localhost:3000/shutdown").send().await;
 
     match response {
         Ok(resp) if resp.status().is_success() => {

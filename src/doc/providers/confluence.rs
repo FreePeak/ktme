@@ -1,9 +1,12 @@
-use super::{config::ConfluenceConfig, Document, DocumentProvider, PublishResult, PublishStatus, DocumentMetadata};
+use super::{
+    config::ConfluenceConfig, Document, DocumentMetadata, DocumentProvider, PublishResult,
+    PublishStatus,
+};
 use crate::error::{KtmeError, Result};
 use async_trait::async_trait;
+use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use base64::{Engine as _, engine::general_purpose};
 
 /// Confluence provider for publishing documentation
 pub struct ConfluenceProvider {
@@ -91,10 +94,16 @@ impl ConfluenceProvider {
             format!("Basic {}", encoded)
         } else if config.is_cloud {
             // For OAuth or other cloud auth methods
-            format!("Bearer {}", config.api_token.as_ref().unwrap_or(&String::new()))
+            format!(
+                "Bearer {}",
+                config.api_token.as_ref().unwrap_or(&String::new())
+            )
         } else {
             // For PAT or other auth
-            format!("Bearer {}", config.api_token.as_ref().unwrap_or(&String::new()))
+            format!(
+                "Bearer {}",
+                config.api_token.as_ref().unwrap_or(&String::new())
+            )
         };
 
         let client = reqwest::Client::builder()
@@ -114,10 +123,16 @@ impl ConfluenceProvider {
         format!("{}/rest/api/{}", base, path.trim_start_matches('/'))
     }
 
-    async fn make_request<T: for<'de> Deserialize<'de>>(&self, method: reqwest::Method, endpoint: &str, body: Option<serde_json::Value>) -> Result<T> {
+    async fn make_request<T: for<'de> Deserialize<'de>>(
+        &self,
+        method: reqwest::Method,
+        endpoint: &str,
+        body: Option<serde_json::Value>,
+    ) -> Result<T> {
         let url = self.api_url(endpoint);
 
-        let mut request = self.client
+        let mut request = self
+            .client
             .request(method, &url)
             .header("Authorization", &self.auth_header)
             .header("Accept", "application/json");
@@ -134,9 +149,10 @@ impl ConfluenceProvider {
         let status = response.status();
         if !status.is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(KtmeError::ApiError(
-                format!("Confluence API error: {} - {}", status, error_text)
-            ));
+            return Err(KtmeError::ApiError(format!(
+                "Confluence API error: {} - {}",
+                status, error_text
+            )));
         }
 
         response
@@ -148,7 +164,10 @@ impl ConfluenceProvider {
     async fn get_page_by_id(&self, page_id: &str) -> Result<Option<PageContent>> {
         let endpoint = format!("content/{}?expand=body.storage,version,space", page_id);
 
-        match self.make_request::<PageContent>(reqwest::Method::GET, &endpoint, None).await {
+        match self
+            .make_request::<PageContent>(reqwest::Method::GET, &endpoint, None)
+            .await
+        {
             Ok(page) => Ok(Some(page)),
             Err(KtmeError::ApiError(msg)) if msg.contains("404") => Ok(None),
             Err(e) => Err(e),
@@ -199,7 +218,11 @@ impl ConfluenceProvider {
         let mut body = serde_json::to_value(&page)
             .map_err(|e| KtmeError::SerializationError(e.to_string()))?;
 
-        if let Some(parent_id) = &doc.parent_id.as_ref().or(self.config.default_parent_id.as_ref()) {
+        if let Some(parent_id) = &doc
+            .parent_id
+            .as_ref()
+            .or(self.config.default_parent_id.as_ref())
+        {
             body["ancestors"] = serde_json::json!([{
                 "id": parent_id
             }]);
@@ -217,12 +240,14 @@ impl ConfluenceProvider {
             body["metadata"]["labels"] = serde_json::json!(labels);
         }
 
-        self.make_request(reqwest::Method::POST, endpoint, Some(body)).await
+        self.make_request(reqwest::Method::POST, endpoint, Some(body))
+            .await
     }
 
     async fn update_page(&self, page_id: &str, doc: &Document) -> Result<PageContent> {
         // Get current page to retrieve version number
-        let current_page = self.get_page_by_id(page_id)
+        let current_page = self
+            .get_page_by_id(page_id)
             .await?
             .ok_or_else(|| KtmeError::DocumentNotFound(page_id.to_string()))?;
 
@@ -248,18 +273,21 @@ impl ConfluenceProvider {
         let body = serde_json::to_value(&update)
             .map_err(|e| KtmeError::SerializationError(e.to_string()))?;
 
-        self.make_request(reqwest::Method::PUT, &endpoint, Some(body)).await
+        self.make_request(reqwest::Method::PUT, &endpoint, Some(body))
+            .await
     }
 
     fn convert_to_document(&self, page: PageContent) -> Document {
         let url = if self.config.is_cloud {
-            format!("{}/wiki/spaces/{}/pages/{}",
+            format!(
+                "{}/wiki/spaces/{}/pages/{}",
                 self.config.base_url.trim_end_matches('/'),
                 page.space.key,
                 page.id
             )
         } else {
-            format!("{}/pages/viewpage.action?pageId={}",
+            format!(
+                "{}/pages/viewpage.action?pageId={}",
                 self.config.base_url.trim_end_matches('/'),
                 page.id
             )
@@ -291,7 +319,10 @@ impl DocumentProvider for ConfluenceProvider {
     async fn health_check(&self) -> Result<bool> {
         let endpoint = "space?limit=1";
 
-        match self.make_request::<serde_json::Value>(reqwest::Method::GET, endpoint, None).await {
+        match self
+            .make_request::<serde_json::Value>(reqwest::Method::GET, endpoint, None)
+            .await
+        {
             Ok(_) => Ok(true),
             Err(_) => Ok(false),
         }
@@ -310,7 +341,7 @@ impl DocumentProvider for ConfluenceProvider {
             Ok(Some(page)) => {
                 let page_content = self.get_page_by_id(&page.id).await?;
                 Ok(page_content.map(|p| self.convert_to_document(p)))
-            },
+            }
             Ok(None) => Ok(None),
             Err(e) => Err(e),
         }
@@ -325,13 +356,15 @@ impl DocumentProvider for ConfluenceProvider {
         let page = self.create_page(doc).await?;
 
         let url = if self.config.is_cloud {
-            format!("{}/wiki/spaces/{}/pages/{}",
+            format!(
+                "{}/wiki/spaces/{}/pages/{}",
                 self.config.base_url.trim_end_matches('/'),
                 page.space.key,
                 page.id
             )
         } else {
-            format!("{}/pages/viewpage.action?pageId={}",
+            format!(
+                "{}/pages/viewpage.action?pageId={}",
                 self.config.base_url.trim_end_matches('/'),
                 page.id
             )
@@ -346,7 +379,8 @@ impl DocumentProvider for ConfluenceProvider {
     }
 
     async fn update_document(&self, id: &str, content: &str) -> Result<PublishResult> {
-        let current_page = self.get_page_by_id(id)
+        let current_page = self
+            .get_page_by_id(id)
             .await?
             .ok_or_else(|| KtmeError::DocumentNotFound(id.to_string()))?;
 
@@ -355,7 +389,11 @@ impl DocumentProvider for ConfluenceProvider {
             return Ok(PublishResult {
                 document_id: id.to_string(),
                 url: String::new(),
-                version: current_page.version.as_ref().map(|v| v.number as u32).unwrap_or(1),
+                version: current_page
+                    .version
+                    .as_ref()
+                    .map(|v| v.number as u32)
+                    .unwrap_or(1),
                 status: PublishStatus::NoChanges,
             });
         }
@@ -372,13 +410,15 @@ impl DocumentProvider for ConfluenceProvider {
         let updated_page = self.update_page(id, &doc).await?;
 
         let url = if self.config.is_cloud {
-            format!("{}/wiki/spaces/{}/pages/{}",
+            format!(
+                "{}/wiki/spaces/{}/pages/{}",
                 self.config.base_url.trim_end_matches('/'),
                 updated_page.space.key,
                 updated_page.id
             )
         } else {
-            format!("{}/pages/viewpage.action?pageId={}",
+            format!(
+                "{}/pages/viewpage.action?pageId={}",
                 self.config.base_url.trim_end_matches('/'),
                 updated_page.id
             )
@@ -392,8 +432,14 @@ impl DocumentProvider for ConfluenceProvider {
         })
     }
 
-    async fn update_section(&self, id: &str, section: &str, content: &str) -> Result<PublishResult> {
-        let current_page = self.get_page_by_id(id)
+    async fn update_section(
+        &self,
+        id: &str,
+        section: &str,
+        content: &str,
+    ) -> Result<PublishResult> {
+        let current_page = self
+            .get_page_by_id(id)
             .await?
             .ok_or_else(|| KtmeError::DocumentNotFound(id.to_string()))?;
 
@@ -402,13 +448,18 @@ impl DocumentProvider for ConfluenceProvider {
         let new_content = if current_page.body.storage.value.contains(&section_header) {
             // Replace existing section
             let start_pattern = format!("h2. {}", section);
-            let start = current_page.body.storage.value.find(&start_pattern)
+            let start = current_page
+                .body
+                .storage
+                .value
+                .find(&start_pattern)
                 .unwrap_or(0);
 
-            let next_h2 = current_page.body.storage.value[start + 1..].find("h2. ")
+            let next_h2 = current_page.body.storage.value[start + 1..]
+                .find("h2. ")
                 .map(|pos| start + 1 + pos);
 
-            if let Some(end) = next_h2 {
+            if let Some(_end) = next_h2 {
                 format!(
                     "{}\n{}\n\n{}",
                     &current_page.body.storage.value[..start],
@@ -427,9 +478,7 @@ impl DocumentProvider for ConfluenceProvider {
             // Append new section
             format!(
                 "{}\n\nh2. {}\n\n{}",
-                current_page.body.storage.value,
-                section,
-                content
+                current_page.body.storage.value, section, content
             )
         };
 
@@ -439,11 +488,8 @@ impl DocumentProvider for ConfluenceProvider {
     async fn delete_document(&self, id: &str) -> Result<()> {
         let endpoint = format!("content/{}", id);
 
-        self.make_request::<serde_json::Value>(
-            reqwest::Method::DELETE,
-            &endpoint,
-            None
-        ).await?;
+        self.make_request::<serde_json::Value>(reqwest::Method::DELETE, &endpoint, None)
+            .await?;
 
         Ok(())
     }
@@ -491,7 +537,8 @@ impl DocumentProvider for ConfluenceProvider {
     fn config(&self) -> &super::config::ProviderConfig {
         // Return a default config reference
         // In practice, this should be stored during provider creation
-        static DEFAULT_CONFIG: std::sync::OnceLock<super::config::ProviderConfig> = std::sync::OnceLock::new();
+        static DEFAULT_CONFIG: std::sync::OnceLock<super::config::ProviderConfig> =
+            std::sync::OnceLock::new();
         DEFAULT_CONFIG.get_or_init(|| super::config::ProviderConfig {
             id: 0,
             provider_type: "confluence".to_string(),

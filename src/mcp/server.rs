@@ -1,6 +1,6 @@
+use crate::ai::AIClient;
 use crate::error::Result;
 use crate::mcp::tools::McpTools;
-use crate::ai::AIClient;
 use serde_json::{json, Value};
 use std::io::{self, BufRead, BufReader, Write};
 
@@ -57,8 +57,11 @@ impl McpServer {
     }
 
     pub async fn start(&self) -> Result<()> {
-        tracing::info!("Starting MCP server: {} (transport: {})",
-                   self.config.server_name, self.config.transport);
+        tracing::info!(
+            "Starting MCP server: {} (transport: {})",
+            self.config.server_name,
+            self.config.transport
+        );
 
         match self.config.transport.as_str() {
             "stdio" => self.run_stdio_server().await,
@@ -67,14 +70,15 @@ impl McpServer {
                     self.run_sse_server(port).await
                 } else {
                     return Err(crate::error::KtmeError::Config(
-                        "HTTP/SSE transport requires port configuration".to_string()
+                        "HTTP/SSE transport requires port configuration".to_string(),
                     ));
                 }
             }
             _ => {
-                return Err(crate::error::KtmeError::Config(
-                    format!("Unsupported transport: {}", self.config.transport)
-                ));
+                return Err(crate::error::KtmeError::Config(format!(
+                    "Unsupported transport: {}",
+                    self.config.transport
+                )));
             }
         }
     }
@@ -140,8 +144,8 @@ impl McpServer {
     }
 
     async fn run_sse_server(&self, port: u16) -> Result<()> {
-        use tokio::net::TcpListener;
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
 
         let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).await?;
         tracing::info!("SSE server listening on port {}", port);
@@ -154,7 +158,9 @@ impl McpServer {
             tokio::spawn(async move {
                 // Send SSE headers
                 let _ = writer.write_all(b"HTTP/1.1 200 OK\r\n").await;
-                let _ = writer.write_all(b"Content-Type: text/event-stream\r\n").await;
+                let _ = writer
+                    .write_all(b"Content-Type: text/event-stream\r\n")
+                    .await;
                 let _ = writer.write_all(b"Cache-Control: no-cache\r\n").await;
                 let _ = writer.write_all(b"Connection: close\r\n").await;
                 let _ = writer.write_all(b"\r\n").await;
@@ -187,9 +193,7 @@ impl McpServer {
             }
         };
 
-        let method = request.get("method")
-            .and_then(|m| m.as_str())
-            .unwrap_or("");
+        let method = request.get("method").and_then(|m| m.as_str()).unwrap_or("");
 
         let id = request.get("id");
 
@@ -408,7 +412,7 @@ impl McpServer {
                                 "type": "object",
                                 "properties": {}
                             }
-                        })
+                        }),
                     ];
 
                     // Build response without ID field initially
@@ -430,78 +434,76 @@ impl McpServer {
                 if !is_notification {
                     let empty_params = json!({});
                     let params = request.get("params").unwrap_or(&empty_params);
-                    let tool_name = params.get("name")
-                        .and_then(|n| n.as_str())
-                        .unwrap_or("");
+                    let tool_name = params.get("name").and_then(|n| n.as_str()).unwrap_or("");
 
                     let empty_args = json!({});
                     let arguments = params.get("arguments").unwrap_or(&empty_args);
 
                     match tool_name {
-                    "read_changes" => {
-                        if let Some(source) = arguments.get("source").and_then(|s| s.as_str()) {
-                            match McpTools::read_changes(source) {
-                                Ok(result) => {
-                                    let response = json!({
-                                        "jsonrpc": "2.0",
-                                        "id": id,
-                                        "result": {
-                                            "content": [{
-                                                "type": "text",
-                                                "text": result
-                                            }]
-                                        }
-                                    });
-                                    self.send_response(&response, writer)?;
-                                }
-                                Err(e) => {
-                                    let response = json!({
-                                        "jsonrpc": "2.0",
-                                        "id": id,
-                                        "error": {
-                                            "code": -32000,
-                                            "message": "Tool execution failed",
-                                            "data": e.to_string()
-                                        }
-                                    });
-                                    self.send_response(&response, writer)?;
-                                }
-                            }
-                        }
-                    }
-                    "get_service_mapping" => {
-                        if let Some(service) = arguments.get("service").and_then(|s| s.as_str()) {
-                            match McpTools::get_service_mapping(service) {
-                                Ok(result) => {
-                                    let response = json!({
-                                        "jsonrpc": "2.0",
-                                        "id": id,
-                                        "result": {
-                                            "content": [{
-                                                "type": "text",
-                                                "text": result
-                                            }]
-                                        }
-                                    });
-                                    self.send_response(&response, writer)?;
-                                }
-                                Err(e) => {
-                                    let response = json!({
-                                        "jsonrpc": "2.0",
-                                        "id": id,
-                                        "error": {
-                                            "code": -32000,
-                                            "message": "Tool execution failed",
-                                            "data": e.to_string()
-                                        }
-                                    });
-                                    self.send_response(&response, writer)?;
+                        "read_changes" => {
+                            if let Some(source) = arguments.get("source").and_then(|s| s.as_str()) {
+                                match McpTools::read_changes(source) {
+                                    Ok(result) => {
+                                        let response = json!({
+                                            "jsonrpc": "2.0",
+                                            "id": id,
+                                            "result": {
+                                                "content": [{
+                                                    "type": "text",
+                                                    "text": result
+                                                }]
+                                            }
+                                        });
+                                        self.send_response(&response, writer)?;
+                                    }
+                                    Err(e) => {
+                                        let response = json!({
+                                            "jsonrpc": "2.0",
+                                            "id": id,
+                                            "error": {
+                                                "code": -32000,
+                                                "message": "Tool execution failed",
+                                                "data": e.to_string()
+                                            }
+                                        });
+                                        self.send_response(&response, writer)?;
+                                    }
                                 }
                             }
                         }
-                    }
-                    "list_services" => {
-                        match McpTools::list_services() {
+                        "get_service_mapping" => {
+                            if let Some(service) = arguments.get("service").and_then(|s| s.as_str())
+                            {
+                                match McpTools::get_service_mapping(service) {
+                                    Ok(result) => {
+                                        let response = json!({
+                                            "jsonrpc": "2.0",
+                                            "id": id,
+                                            "result": {
+                                                "content": [{
+                                                    "type": "text",
+                                                    "text": result
+                                                }]
+                                            }
+                                        });
+                                        self.send_response(&response, writer)?;
+                                    }
+                                    Err(e) => {
+                                        let response = json!({
+                                            "jsonrpc": "2.0",
+                                            "id": id,
+                                            "error": {
+                                                "code": -32000,
+                                                "message": "Tool execution failed",
+                                                "data": e.to_string()
+                                            }
+                                        });
+                                        self.send_response(&response, writer)?;
+                                    }
+                                }
+                            }
+                        }
+                        "list_services" => match McpTools::list_services() {
                             Ok(services) => {
                                 let response = json!({
                                     "jsonrpc": "2.0",
@@ -527,77 +529,19 @@ impl McpServer {
                                 });
                                 self.send_response(&response, writer)?;
                             }
-                        }
-                    }
-                    "generate_documentation" => {
-                        let service = arguments.get("service").and_then(|s| s.as_str()).unwrap_or("");
-                        let changes = arguments.get("changes").and_then(|c| c.as_str()).unwrap_or("");
-                        let format = arguments.get("format").and_then(|f| f.as_str());
+                        },
+                        "generate_documentation" => {
+                            let service = arguments
+                                .get("service")
+                                .and_then(|s| s.as_str())
+                                .unwrap_or("");
+                            let changes = arguments
+                                .get("changes")
+                                .and_then(|c| c.as_str())
+                                .unwrap_or("");
+                            let format = arguments.get("format").and_then(|f| f.as_str());
 
-                        match McpTools::generate_documentation(service, changes, format) {
-                            Ok(result) => {
-                                let response = json!({
-                                    "jsonrpc": "2.0",
-                                    "id": id,
-                                    "result": {
-                                        "content": [{
-                                            "type": "text",
-                                            "text": result
-                                        }]
-                                    }
-                                });
-                                self.send_response(&response, writer)?;
-                            }
-                            Err(e) => {
-                                let response = json!({
-                                    "jsonrpc": "2.0",
-                                    "id": id,
-                                    "error": {
-                                        "code": -32000,
-                                        "message": "Tool execution failed",
-                                        "data": e.to_string()
-                                    }
-                                });
-                                self.send_response(&response, writer)?;
-                            }
-                        }
-                    }
-                    "update_documentation" => {
-                        let service = arguments.get("service").and_then(|s| s.as_str()).unwrap_or("");
-                        let doc_path = arguments.get("doc_path").and_then(|d| d.as_str()).unwrap_or("");
-                        let content = arguments.get("content").and_then(|c| c.as_str()).unwrap_or("");
-
-                        match McpTools::update_documentation(service, doc_path, content) {
-                            Ok(result) => {
-                                let response = json!({
-                                    "jsonrpc": "2.0",
-                                    "id": id,
-                                    "result": {
-                                        "content": [{
-                                            "type": "text",
-                                            "text": result
-                                        }]
-                                    }
-                                });
-                                self.send_response(&response, writer)?;
-                            }
-                            Err(e) => {
-                                let response = json!({
-                                    "jsonrpc": "2.0",
-                                    "id": id,
-                                    "error": {
-                                        "code": -32000,
-                                        "message": "Tool execution failed",
-                                        "data": e.to_string()
-                                    }
-                                });
-                                self.send_response(&response, writer)?;
-                            }
-                        }
-                    }
-                    "search_services" => {
-                        if let Some(query) = arguments.get("query").and_then(|q| q.as_str()) {
-                            match McpTools::search_services(query) {
+                            match McpTools::generate_documentation(service, changes, format) {
                                 Ok(result) => {
                                     let response = json!({
                                         "jsonrpc": "2.0",
@@ -625,74 +569,182 @@ impl McpServer {
                                 }
                             }
                         }
-                    }
-                    "search_by_feature" => {
-                        if let Some(feature) = arguments.get("feature").and_then(|f| f.as_str()) {
-                            match McpTools::search_by_feature(feature) {
-                                Ok(result) => {
-                                    let response = json!({
-                                        "jsonrpc": "2.0",
-                                        "id": id,
-                                        "result": {
-                                            "content": [{
-                                                "type": "text",
-                                                "text": result
-                                            }]
-                                        }
-                                    });
-                                    self.send_response(&response, writer)?;
-                                }
-                                Err(e) => {
-                                    let response = json!({
-                                        "jsonrpc": "2.0",
-                                        "id": id,
-                                        "error": {
-                                            "code": -32000,
-                                            "message": "Tool execution failed",
-                                            "data": e.to_string()
-                                        }
-                                    });
-                                    self.send_response(&response, writer)?;
-                                }
-                            }
-                        }
-                    }
-                    "search_by_keyword" => {
-                        if let Some(keyword) = arguments.get("keyword").and_then(|k| k.as_str()) {
-                            match McpTools::search_by_keyword(keyword) {
-                                Ok(result) => {
-                                    let response = json!({
-                                        "jsonrpc": "2.0",
-                                        "id": id,
-                                        "result": {
-                                            "content": [{
-                                                "type": "text",
-                                                "text": result
-                                            }]
-                                        }
-                                    });
-                                    self.send_response(&response, writer)?;
-                                }
-                                Err(e) => {
-                                    let response = json!({
-                                        "jsonrpc": "2.0",
-                                        "id": id,
-                                        "error": {
-                                            "code": -32000,
-                                            "message": "Tool execution failed",
-                                            "data": e.to_string()
-                                        }
-                                    });
-                                    self.send_response(&response, writer)?;
-                                }
-                            }
-                        }
-                    }
-                    "automated_documentation_workflow" => {
-                        let service = arguments.get("service").and_then(|s| s.as_str()).unwrap_or("");
-                        let source = arguments.get("source").and_then(|s| s.as_str()).unwrap_or("");
+                        "update_documentation" => {
+                            let service = arguments
+                                .get("service")
+                                .and_then(|s| s.as_str())
+                                .unwrap_or("");
+                            let doc_path = arguments
+                                .get("doc_path")
+                                .and_then(|d| d.as_str())
+                                .unwrap_or("");
+                            let content = arguments
+                                .get("content")
+                                .and_then(|c| c.as_str())
+                                .unwrap_or("");
 
-                        match McpTools::automated_documentation_workflow(service, source) {
+                            match McpTools::update_documentation(service, doc_path, content) {
+                                Ok(result) => {
+                                    let response = json!({
+                                        "jsonrpc": "2.0",
+                                        "id": id,
+                                        "result": {
+                                            "content": [{
+                                                "type": "text",
+                                                "text": result
+                                            }]
+                                        }
+                                    });
+                                    self.send_response(&response, writer)?;
+                                }
+                                Err(e) => {
+                                    let response = json!({
+                                        "jsonrpc": "2.0",
+                                        "id": id,
+                                        "error": {
+                                            "code": -32000,
+                                            "message": "Tool execution failed",
+                                            "data": e.to_string()
+                                        }
+                                    });
+                                    self.send_response(&response, writer)?;
+                                }
+                            }
+                        }
+                        "search_services" => {
+                            if let Some(query) = arguments.get("query").and_then(|q| q.as_str()) {
+                                match McpTools::search_services(query) {
+                                    Ok(result) => {
+                                        let response = json!({
+                                            "jsonrpc": "2.0",
+                                            "id": id,
+                                            "result": {
+                                                "content": [{
+                                                    "type": "text",
+                                                    "text": result
+                                                }]
+                                            }
+                                        });
+                                        self.send_response(&response, writer)?;
+                                    }
+                                    Err(e) => {
+                                        let response = json!({
+                                            "jsonrpc": "2.0",
+                                            "id": id,
+                                            "error": {
+                                                "code": -32000,
+                                                "message": "Tool execution failed",
+                                                "data": e.to_string()
+                                            }
+                                        });
+                                        self.send_response(&response, writer)?;
+                                    }
+                                }
+                            }
+                        }
+                        "search_by_feature" => {
+                            if let Some(feature) = arguments.get("feature").and_then(|f| f.as_str())
+                            {
+                                match McpTools::search_by_feature(feature) {
+                                    Ok(result) => {
+                                        let response = json!({
+                                            "jsonrpc": "2.0",
+                                            "id": id,
+                                            "result": {
+                                                "content": [{
+                                                    "type": "text",
+                                                    "text": result
+                                                }]
+                                            }
+                                        });
+                                        self.send_response(&response, writer)?;
+                                    }
+                                    Err(e) => {
+                                        let response = json!({
+                                            "jsonrpc": "2.0",
+                                            "id": id,
+                                            "error": {
+                                                "code": -32000,
+                                                "message": "Tool execution failed",
+                                                "data": e.to_string()
+                                            }
+                                        });
+                                        self.send_response(&response, writer)?;
+                                    }
+                                }
+                            }
+                        }
+                        "search_by_keyword" => {
+                            if let Some(keyword) = arguments.get("keyword").and_then(|k| k.as_str())
+                            {
+                                match McpTools::search_by_keyword(keyword) {
+                                    Ok(result) => {
+                                        let response = json!({
+                                            "jsonrpc": "2.0",
+                                            "id": id,
+                                            "result": {
+                                                "content": [{
+                                                    "type": "text",
+                                                    "text": result
+                                                }]
+                                            }
+                                        });
+                                        self.send_response(&response, writer)?;
+                                    }
+                                    Err(e) => {
+                                        let response = json!({
+                                            "jsonrpc": "2.0",
+                                            "id": id,
+                                            "error": {
+                                                "code": -32000,
+                                                "message": "Tool execution failed",
+                                                "data": e.to_string()
+                                            }
+                                        });
+                                        self.send_response(&response, writer)?;
+                                    }
+                                }
+                            }
+                        }
+                        "automated_documentation_workflow" => {
+                            let service = arguments
+                                .get("service")
+                                .and_then(|s| s.as_str())
+                                .unwrap_or("");
+                            let source = arguments
+                                .get("source")
+                                .and_then(|s| s.as_str())
+                                .unwrap_or("");
+
+                            match McpTools::automated_documentation_workflow(service, source) {
+                                Ok(result) => {
+                                    let response = json!({
+                                        "jsonrpc": "2.0",
+                                        "id": id,
+                                        "result": {
+                                            "content": [{
+                                                "type": "text",
+                                                "text": result
+                                            }]
+                                        }
+                                    });
+                                    self.send_response(&response, writer)?;
+                                }
+                                Err(e) => {
+                                    let response = json!({
+                                        "jsonrpc": "2.0",
+                                        "id": id,
+                                        "error": {
+                                            "code": -32000,
+                                            "message": "Tool execution failed",
+                                            "data": e.to_string()
+                                        }
+                                    });
+                                    self.send_response(&response, writer)?;
+                                }
+                            }
+                        }
+                        "detect_service_name" => match McpTools::detect_service_name() {
                             Ok(result) => {
                                 let response = json!({
                                     "jsonrpc": "2.0",
@@ -718,10 +770,8 @@ impl McpServer {
                                 });
                                 self.send_response(&response, writer)?;
                             }
-                        }
-                    }
-                    "detect_service_name" => {
-                        match McpTools::detect_service_name() {
+                        },
+                        "get_repository_info" => match McpTools::get_repository_info() {
                             Ok(result) => {
                                 let response = json!({
                                     "jsonrpc": "2.0",
@@ -747,37 +797,7 @@ impl McpServer {
                                 });
                                 self.send_response(&response, writer)?;
                             }
-                        }
-                    }
-                    "get_repository_info" => {
-                        match McpTools::get_repository_info() {
-                            Ok(result) => {
-                                let response = json!({
-                                    "jsonrpc": "2.0",
-                                    "id": id,
-                                    "result": {
-                                        "content": [{
-                                            "type": "text",
-                                            "text": result
-                                        }]
-                                    }
-                                });
-                                self.send_response(&response, writer)?;
-                            }
-                            Err(e) => {
-                                let response = json!({
-                                    "jsonrpc": "2.0",
-                                    "id": id,
-                                    "error": {
-                                        "code": -32000,
-                                        "message": "Tool execution failed",
-                                        "data": e.to_string()
-                                    }
-                                });
-                                self.send_response(&response, writer)?;
-                            }
-                        }
-                    }
+                        },
                         _ => {
                             let response = json!({
                                 "jsonrpc": "2.0",

@@ -1,253 +1,212 @@
-# KTME - Knowledge Tracking & Management Engine
+# KTME - Knowledge Transfer Me
 
-KTME is a powerful tool for tracking, managing, and generating documentation from code changes. It provides seamless integration with Git repositories and offers both file-based and SQLite-based storage options.
+> Automated documentation generation from Git changes using AI
+
+[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Crates.io](https://img.shields.io/crates/v/ktme.svg)](https://crates.io/crates/ktme)
+
+KTME is a CLI tool and MCP server that automatically generates and maintains documentation from Git changes. It integrates with GitHub, GitLab, and Confluence, using AI to create meaningful documentation from code commits and pull requests.
 
 ## Features
 
-- **Git Integration**: Automatically extracts and tracks code changes from Git repositories
-- **Multiple Storage Backends**: Supports both TOML file-based storage and SQLite database
-- **Documentation Generation**: Generates comprehensive documentation from code changes
-- **MCP Server Integration**: Provides Model Context Protocol server capabilities
-- **Service Mapping**: Maps different services to their documentation locations
+- **Smart Documentation Generation** - AI-powered documentation from Git diffs, commits, and PRs
+- **Multiple Integrations** - GitHub, GitLab, and Confluence support
+- **Template System** - Customizable Markdown templates with variable substitution
+- **MCP Server** - Model Context Protocol server for AI agent integration
+- **Dual Storage** - TOML and SQLite backends for flexibility
+- **Service Mapping** - Organize documentation by service/project
 
-## Recent Changes
+## Quick Start
 
-### AI Agent Knowledge Management (Latest)
-
-KTME now provides comprehensive support for AI agents with advanced knowledge tree mapping and document synchronization capabilities.
-
-#### New Features
-- **Intelligent Service Detection**: Automatic detection of service names from Git repositories
-- **Mock AI Provider**: Built-in documentation generation without requiring API keys
-- **Advanced Search**: Feature and keyword-based search with relevance scoring
-- **MCP Server Integration**: Enhanced Model Context Protocol server with AI agent tools
-
-#### Documentation Generation
-```bash
-# Generate documentation from staged changes
-ktme generate --service ktme --staged --type api-doc
-
-# Generate changelog
-ktme generate --service ktme --staged --type changelog
-
-# Output to file
-ktme generate --service ktme --staged --output docs/my-docs.md
-```
-
-### SQLite Database Support
-
-The project has been enhanced with SQLite database support for improved performance and scalability:
-
-#### Configuration Changes
-- Added `use_sqlite` flag in configuration to enable/disable SQLite storage
-- Added `database_file` option to specify custom database file location
-- Default database location: `~/.config/ktme/ktme.db`
-
-#### Database Schema
-The SQLite database includes the following tables:
-- `services`: Stores service definitions
-- `document_mappings`: Maps documents to their storage locations
-- `provider_configs`: Configuration for different documentation providers
-- `prompt_templates`: Templates for generating documentation
-- `document_templates`: Document structure templates
-- `generation_history`: Track documentation generation history
-- `diff_cache`: Cache for storing Git diff information
-- `schema_versions`: Database schema version tracking
-
-#### Storage Manager Updates
-The `StorageManager` now supports:
-- Dual storage mode (TOML + SQLite)
-- Database initialization and migration
-- Service listing from database
-- Database statistics retrieval
-
-## Upcoming Features
-
-### 🚧 Advanced Knowledge Management (Planned)
-
-#### Feature Mapping System
-- **Feature Relationships**: Track parent-child relationships and dependencies between features
-- **Relevance Scoring**: Intelligent scoring of feature-document relationships
-- **Cross-Service Mapping**: Discover relationships between features across different services
-- **Automated Extraction**: Automatically extract features from code and documentation
-
-#### AI Agent Integration
-- **Knowledge Tree**: Hierarchical organization of services, features, and documentation
-- **Context-Aware Search**: Understand user intent and provide relevant results
-- **Semantic Search**: Vector-based search for finding related content
-- **Multi-Modal Support**: Search across code, documentation, and examples
-
-#### Cloud Synchronization
-- **Multi-Provider Support**: Sync with Confluence, GitHub, Notion, and S3
-- **Bi-Directional Sync**: Two-way synchronization with conflict resolution
-- **Version Tracking**: Keep track of document versions and changes
-- **Offline Support**: Work offline and sync when connected
-
-#### Enhanced MCP Tools
-```bash
-# Advanced feature search with context
-ktme_search_features --query "user authentication" --context "security"
-
-# Knowledge tree mapping
-ktme_map_knowledge --service "auth-service" --depth 3
-
-# Cloud synchronization
-ktme_sync_documents --provider confluence --workspace "team-docs"
-
-# Context-aware queries for AI agents
-ktme_query_context --service "payment" --features "fraud,detection"
-```
-
-#### Performance & Scalability
-- **Caching Layer**: Intelligent caching of search results and documents
-- **Incremental Sync**: Only sync changed documents to reduce bandwidth
-- **Background Processing**: Handle large repositories efficiently
-- **Rate Limiting**: Respect API limits for cloud providers
-
-### 🎯 AI Agent Knowledge Management Architecture
-
-KTME provides a comprehensive knowledge management system for AI agents:
-
-```mermaid
-graph TB
-    User[User/AI Agent] --> MCP[MCP Server Interface]
-    MCP --> KTME[KTME Core System]
-
-    subgraph "Local Knowledge Base"
-        KTME --> SQLite[(SQLite Database)]
-        KTME --> Docs[Markdown Documents]
-        SQLite --> Services[Service Registry]
-        SQLite --> Features[Feature Mapping]
-        SQLite --> Mappings[Document Mappings]
-    end
-
-    subgraph "Cloud Integration"
-        KTME --> CloudSync[Cloud Synchronization]
-        CloudSync --> CloudDocs[Cloud Documentation]
-        CloudSync --> Confluence[Confluence Wiki]
-        CloudSync --> GitHub[GitHub Wikis/Docs]
-    end
-```
-
-See [docs/architecture.md](docs/architecture.md) for detailed architecture diagrams and implementation plans.
-
-## Installation
+### Installation
 
 ```bash
-# Install via npm
-npm install -g ktme-cli
+# Install from crates.io
+cargo install ktme
 
 # Or build from source
 cargo build --release
+cargo install --path .
 ```
 
-## Configuration
+### Basic Usage
 
-Create a configuration file at `~/.config/ktme/config.toml`:
+```bash
+# Generate docs from staged changes
+ktme generate --service my-service --staged
+
+# Extract GitHub PR and generate docs
+ktme extract --pr 123 --provider github
+ktme generate --service my-service --commit HEAD
+
+# Update existing documentation
+ktme update --service my-service --staged --section "API Changes"
+
+# Map service to documentation location
+ktme mapping add my-service --file docs/api.md
+```
+
+### Configuration
+
+Create `~/.config/ktme/config.toml`:
 
 ```toml
-[storage]
-use_sqlite = true
-database_file = "~/.config/ktme/ktme.db"
-mappings_file = "~/.config/ktme/mappings.toml"
-auto_discover = false
+[git]
+github_token = "ghp_xxxxx"
+gitlab_token = "glpat_xxxxx"
+
+[confluence]
+base_url = "https://your-company.atlassian.net/wiki"
+api_token = "your-api-token"
+space_key = "DOCS"
+
+[ai]
+provider = "openai"
+api_key = "sk-xxxxx"
+model = "gpt-4"
 ```
 
-## Usage
+## Documentation
 
-### Basic Commands
+- **[Quick Start Guide](docs/PUBLISH.md)** - Get started in 5 minutes
+- **[Release Workflow](docs/RELEASE.md)** - Publishing and version management
+- **[Architecture](docs/architecture.md)** - System design and components
+- **[Development Guide](docs/DEVELOPMENT.md)** - Contributing and development setup
 
+## Core Capabilities
+
+### 1. Git Integration
+
+Extract changes from various sources:
+- Staged changes (`--staged`)
+- Specific commits (`--commit abc123`)
+- Commit ranges (`--range main..feature`)
+- Pull/Merge requests (`--pr 123`)
+
+### 2. Documentation Generation
+
+Generate documentation with templates:
 ```bash
-# List all services
-ktme list-services
+# Use custom template
+ktme generate --service api --template api-docs
 
-# Add a new service mapping
-ktme mapping add <service-name> <documentation-path>
+# Generate changelog
+ktme generate --service api --type changelog
 
-# Generate documentation
-ktme generate <service-name>
-
-# Read changes from Git
-ktme read-changes --source HEAD
+# Output to specific file
+ktme generate --service api --output docs/changelog.md
 ```
 
-### MCP Server
+### 3. Smart Updates
 
-KTME provides an MCP server for integration with various tools:
-
+Update existing documentation intelligently:
 ```bash
-# Start the MCP server
-ktme mcp server
+# Update specific section
+ktme update --service api --section "Breaking Changes"
 
-# Available MCP tools:
-# - ktme_read_changes: Extract Git changes
-# - ktme_list_services: List all services
-# - ktme_get_service_mapping: Get documentation location for a service
-# - ktme_generate_documentation: Generate documentation from changes
-# - ktme_update_documentation: Update existing documentation
+# Smart merge with existing content
+ktme update --service api --staged
 ```
 
-## Database Verification
+### 4. MCP Server
 
-To verify SQLite database is working correctly:
-
+Run as MCP server for AI agents:
 ```bash
-# Check database exists
-ls -la ~/.config/ktme/ktme.db
+# Start server
+ktme mcp start
 
-# Query database directly
-sqlite3 ~/.config/ktme/ktme.db ".tables"
-
-# Check service count
-sqlite3 ~/.config/ktme/ktme.db "SELECT COUNT(*) FROM services;"
-```
-
-## Architecture
-
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Git Repository│───▶│   Change Reader  │───▶│  Documentation  │
-└─────────────────┘    └──────────────────┘    │    Generator    │
-                              │                └─────────────────┘
-                              ▼                          │
-┌─────────────────┐    ┌──────────────────┐             ▼
-│  Storage Layer  │◀───│  Storage Manager │◀───┌─────────────────┐
-│  (TOML/SQLite)  │    └──────────────────┘    │   MCP Server    │
-└─────────────────┘                             └─────────────────┘
+# Available tools:
+# - ktme_generate_documentation
+# - ktme_update_documentation
+# - ktme_list_services
+# - ktme_search_features
 ```
 
 ## Development
 
-### Project Structure
-
-- `src/config/`: Configuration management
-- `src/storage/`: Storage abstraction and implementations
-- `src/git/`: Git integration and change extraction
-- `src/mcp/`: MCP server implementation
-- `src/cli/`: Command-line interface
-
-### Building from Source
+### Quick Commands
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/ktme.git
-cd ktme
+# Test changes (fast - only new modules)
+make test-changes
 
-# Build
-cargo build --release
+# Run all checks (format, lint, tests)
+make pre-release
 
-# Run tests
-cargo test
+# Development cycle
+make dev
 ```
+
+### Publishing
+
+```bash
+# Automated release workflow
+make release
+```
+
+See [docs/RELEASE.md](docs/RELEASE.md) for complete release documentation.
+
+## Architecture
+
+```
+┌─────────────┐     ┌──────────────┐     ┌───────────────┐
+│   Git CLI   │────▶│  Extractors  │────▶│  Generators   │
+│  GitHub API │     │ (Diff/PR/MR) │     │  (Templates)  │
+│  GitLab API │     └──────────────┘     └───────────────┘
+└─────────────┘              │                     │
+                             ▼                     ▼
+                     ┌──────────────┐     ┌───────────────┐
+                     │   Storage    │     │    Writers    │
+                     │ (TOML/SQLite)│     │ (MD/Confluence)│
+                     └──────────────┘     └───────────────┘
+```
+
+## Recent Updates (v0.1.0)
+
+### New Features
+- ✅ Template engine with variable substitution
+- ✅ Smart documentation merging by section
+- ✅ GitHub PR extraction and integration
+- ✅ GitLab MR extraction and integration
+- ✅ Confluence writer with Markdown conversion
+- ✅ Enhanced Markdown writer with section updates
+
+### Implementation Details
+- **34 new tests** (all passing)
+- **10 files modified** with new functionality
+- **Zero compilation errors** after strict linting
+
+See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+We welcome contributions! Please see our [Development Guide](docs/DEVELOPMENT.md).
+
+```bash
+# Setup development environment
+git clone https://github.com/FreePeak/ktme.git
+cd ktme
+make setup
+
+# Run tests
+make test-changes
+
+# Submit PR
+make pre-release
+git push
+```
 
 ## License
 
-This project is licensed under the MIT License.
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/FreePeak/ktme/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/FreePeak/ktme/discussions)
+- **Documentation**: [docs/](docs/)
+
+---
+
+**Built with** ❤️ **using Rust**

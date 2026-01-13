@@ -1,4 +1,7 @@
-use super::{config::MarkdownConfig, Document, DocumentProvider, PublishResult, PublishStatus, DocumentMetadata};
+use super::{
+    config::MarkdownConfig, Document, DocumentMetadata, DocumentProvider, PublishResult,
+    PublishStatus,
+};
 use crate::error::{KtmeError, Result};
 use async_trait::async_trait;
 use std::path::{Path, PathBuf};
@@ -35,36 +38,40 @@ impl MarkdownProvider {
     }
 
     fn read_file(&self, path: &Path) -> Result<String> {
-        std::fs::read_to_string(path)
-            .map_err(KtmeError::Io)
+        std::fs::read_to_string(path).map_err(KtmeError::Io)
     }
 
     fn write_file(&self, path: &Path, content: &str) -> Result<()> {
         if self.config.auto_create_dirs {
             if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent)
-                    .map_err(KtmeError::Io)?;
+                std::fs::create_dir_all(parent).map_err(KtmeError::Io)?;
             }
         }
 
-        std::fs::write(path, content)
-            .map_err(KtmeError::Io)
+        std::fs::write(path, content).map_err(KtmeError::Io)
     }
 
     fn file_metadata(&self, path: &Path) -> Result<DocumentMetadata> {
-        let metadata = std::fs::metadata(path)
-            .map_err(KtmeError::Io)?;
+        let metadata = std::fs::metadata(path).map_err(KtmeError::Io)?;
 
-        let created_at = metadata.created()
+        let created_at = metadata
+            .created()
             .ok()
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-            .map(|d| chrono::DateTime::from_timestamp(d.as_secs() as i64, 0).unwrap_or_else(|| chrono::Utc::now()))
+            .map(|d| {
+                chrono::DateTime::from_timestamp(d.as_secs() as i64, 0)
+                    .unwrap_or_else(|| chrono::Utc::now())
+            })
             .map(|dt| dt.to_rfc3339());
 
-        let updated_at = metadata.modified()
+        let updated_at = metadata
+            .modified()
             .ok()
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-            .map(|d| chrono::DateTime::from_timestamp(d.as_secs() as i64, 0).unwrap_or_else(|| chrono::Utc::now()))
+            .map(|d| {
+                chrono::DateTime::from_timestamp(d.as_secs() as i64, 0)
+                    .unwrap_or_else(|| chrono::Utc::now())
+            })
             .map(|dt| dt.to_rfc3339());
 
         Ok(DocumentMetadata {
@@ -99,7 +106,8 @@ impl DocumentProvider for MarkdownProvider {
 
         let content = self.read_file(&path)?;
         let metadata = self.file_metadata(&path)?;
-        let title = path.file_stem()
+        let title = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("Untitled")
             .to_string();
@@ -109,7 +117,8 @@ impl DocumentProvider for MarkdownProvider {
             title,
             content,
             url: Some(path.to_string_lossy().to_string()),
-            parent_id: path.parent()
+            parent_id: path
+                .parent()
                 .and_then(|p| p.to_str())
                 .map(|s| s.to_string()),
             metadata,
@@ -125,7 +134,9 @@ impl DocumentProvider for MarkdownProvider {
         let path = self.resolve_path(&doc.id);
 
         if path.exists() {
-            return Err(KtmeError::DocumentExists(path.to_string_lossy().to_string()));
+            return Err(KtmeError::DocumentExists(
+                path.to_string_lossy().to_string(),
+            ));
         }
 
         self.write_file(&path, &doc.content)?;
@@ -166,7 +177,12 @@ impl DocumentProvider for MarkdownProvider {
         })
     }
 
-    async fn update_section(&self, id: &str, section: &str, content: &str) -> Result<PublishResult> {
+    async fn update_section(
+        &self,
+        id: &str,
+        section: &str,
+        content: &str,
+    ) -> Result<PublishResult> {
         let path = self.resolve_path(id);
 
         if !path.exists() {
@@ -181,7 +197,7 @@ impl DocumentProvider for MarkdownProvider {
 
         let new_content = if let Some(start) = old_content.find(&section_header) {
             if let Some(end) = old_content[start..].find(next_header) {
-                let end_pos = start + end;
+                let _end_pos = start + end;
                 format!(
                     "{}\n{}\n{}",
                     &old_content[..start],
@@ -216,8 +232,7 @@ impl DocumentProvider for MarkdownProvider {
         let path = self.resolve_path(id);
 
         if path.exists() {
-            std::fs::remove_file(&path)
-                .map_err(KtmeError::Io)?;
+            std::fs::remove_file(&path).map_err(KtmeError::Io)?;
         }
 
         Ok(())
@@ -232,21 +247,19 @@ impl DocumentProvider for MarkdownProvider {
 
         let mut documents = Vec::new();
 
-        let entries = std::fs::read_dir(&container_path)
-            .map_err(KtmeError::Io)?;
+        let entries = std::fs::read_dir(&container_path).map_err(KtmeError::Io)?;
 
         for entry in entries {
             let entry = entry.map_err(KtmeError::Io)?;
             let path = entry.path();
 
-            if path.extension()
+            if path
+                .extension()
                 .and_then(|s| s.to_str())
                 .map(|s| s == self.config.extension)
                 .unwrap_or(false)
             {
-                if let Some(id) = path.file_name()
-                    .and_then(|s| s.to_str())
-                {
+                if let Some(id) = path.file_name().and_then(|s| s.to_str()) {
                     if let Some(doc) = self.get_document(id).await? {
                         documents.push(doc);
                     }
@@ -260,11 +273,13 @@ impl DocumentProvider for MarkdownProvider {
     async fn search_documents(&self, query: &str) -> Result<Vec<Document>> {
         let mut matches = Vec::new();
 
-        fn search_dir(path: &Path, query: &str, matches: &mut Vec<std::path::PathBuf>) -> Result<()> {
+        fn search_dir(
+            path: &Path,
+            query: &str,
+            matches: &mut Vec<std::path::PathBuf>,
+        ) -> Result<()> {
             if path.is_dir() {
-                for entry in std::fs::read_dir(path)
-                    .map_err(KtmeError::Io)?
-                {
+                for entry in std::fs::read_dir(path).map_err(KtmeError::Io)? {
                     let entry = entry.map_err(KtmeError::Io)?;
                     search_dir(&entry.path(), query, matches)?;
                 }
@@ -279,14 +294,13 @@ impl DocumentProvider for MarkdownProvider {
 
         // Now check each file for content matching
         for path in file_paths {
-            if path.extension()
+            if path
+                .extension()
                 .and_then(|s| s.to_str())
                 .map(|s| s == self.config.extension)
                 .unwrap_or(false)
             {
-                if let Some(id) = path.file_name()
-                    .and_then(|s| s.to_str())
-                {
+                if let Some(id) = path.file_name().and_then(|s| s.to_str()) {
                     if let Ok(Some(doc)) = self.get_document(id).await {
                         if doc.content.contains(query) || doc.title.contains(query) {
                             matches.push(doc);
@@ -302,7 +316,8 @@ impl DocumentProvider for MarkdownProvider {
     fn config(&self) -> &super::config::ProviderConfig {
         // Return a default config reference
         // In practice, this should be stored during provider creation
-        static DEFAULT_CONFIG: std::sync::OnceLock<super::config::ProviderConfig> = std::sync::OnceLock::new();
+        static DEFAULT_CONFIG: std::sync::OnceLock<super::config::ProviderConfig> =
+            std::sync::OnceLock::new();
         DEFAULT_CONFIG.get_or_init(|| super::config::ProviderConfig {
             id: 0,
             provider_type: "markdown".to_string(),
@@ -358,7 +373,10 @@ mod tests {
 
         // Test update section
         let section_content = "Section content here.";
-        let result = provider.update_section("test", "Section", section_content).await.unwrap();
+        let result = provider
+            .update_section("test", "Section", section_content)
+            .await
+            .unwrap();
         assert!(matches!(result.status, PublishStatus::Updated));
 
         // Test delete document

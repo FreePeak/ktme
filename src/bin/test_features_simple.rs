@@ -1,9 +1,9 @@
 //! Simple test for KTME feature management using in-memory database
 
-use ktme::storage::database::Database;
-use ktme::storage::repository::{ServiceRepository, FeatureRepository};
-use ktme::storage::models::{FeatureType, SearchQuery};
 use ktme::error::Result;
+use ktme::storage::database::Database;
+use ktme::storage::models::{FeatureType, SearchQuery};
+use ktme::storage::repository::{FeatureRepository, ServiceRepository};
 
 fn main() -> Result<()> {
     println!("🧪 Testing KTME Feature Management (In-Memory)");
@@ -19,7 +19,7 @@ fn main() -> Result<()> {
     let service = service_repo.create(
         "test-service",
         Some("/test/path"),
-        Some("Test service for feature management")
+        Some("Test service for feature management"),
     )?;
     println!("✅ Created service: {} (ID: {})", service.name, service.id);
 
@@ -50,7 +50,9 @@ fn main() -> Result<()> {
         }
         None => {
             println!("❌ Failed to retrieve feature");
-            return Err(ktme::error::KtmeError::Storage("Feature not found".to_string()));
+            return Err(ktme::error::KtmeError::Storage(
+                "Feature not found".to_string(),
+            ));
         }
     }
 
@@ -78,7 +80,10 @@ fn main() -> Result<()> {
     assert_eq!(search_results.len(), 1);
 
     for result in &search_results {
-        println!("   - {} in {}: {:.2}", result.feature_name, result.service_name, result.relevance_score);
+        println!(
+            "   - {} in {}: {:.2}",
+            result.feature_name, result.service_name, result.relevance_score
+        );
         assert_eq!(result.feature_name, "AI Documentation Generation");
         assert_eq!(result.service_name, "test-service");
     }
@@ -97,7 +102,10 @@ fn main() -> Result<()> {
     };
 
     let advanced_results = feature_repo.search(&advanced_query)?;
-    println!("✅ Advanced search returned {} results", advanced_results.len());
+    println!(
+        "✅ Advanced search returned {} results",
+        advanced_results.len()
+    );
     assert_eq!(advanced_results.len(), 1);
 
     // Test relevance score update
@@ -111,7 +119,9 @@ fn main() -> Result<()> {
         }
         None => {
             println!("❌ Failed to retrieve updated feature");
-            return Err(ktme::error::KtmeError::Storage("Feature not found after update".to_string()));
+            return Err(ktme::error::KtmeError::Storage(
+                "Feature not found after update".to_string(),
+            ));
         }
     }
 

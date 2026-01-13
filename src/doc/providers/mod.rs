@@ -65,7 +65,8 @@ pub trait DocumentProvider: Send + Sync {
     async fn update_document(&self, id: &str, content: &str) -> Result<PublishResult>;
 
     /// Update a specific section within a document
-    async fn update_section(&self, id: &str, section: &str, content: &str) -> Result<PublishResult>;
+    async fn update_section(&self, id: &str, section: &str, content: &str)
+        -> Result<PublishResult>;
 
     /// Delete a document
     async fn delete_document(&self, id: &str) -> Result<()>;
@@ -84,21 +85,29 @@ pub trait DocumentProvider: Send + Sync {
 pub struct ProviderFactory;
 
 impl ProviderFactory {
-    pub fn create(provider_type: &str, config: config::ProviderConfig) -> Result<Box<dyn DocumentProvider>> {
+    pub fn create(
+        provider_type: &str,
+        config: config::ProviderConfig,
+    ) -> Result<Box<dyn DocumentProvider>> {
         match provider_type {
             "confluence" => {
-                let confluence_config: config::ConfluenceConfig = serde_json::from_value(config.config.clone())
-                    .map_err(|e| crate::error::KtmeError::Config(e.to_string()))?;
-                Ok(Box::new(confluence::ConfluenceProvider::new(confluence_config)))
-            },
+                let confluence_config: config::ConfluenceConfig =
+                    serde_json::from_value(config.config.clone())
+                        .map_err(|e| crate::error::KtmeError::Config(e.to_string()))?;
+                Ok(Box::new(confluence::ConfluenceProvider::new(
+                    confluence_config,
+                )))
+            }
             "markdown" => {
-                let markdown_config: config::MarkdownConfig = serde_json::from_value(config.config.clone())
-                    .map_err(|e| crate::error::KtmeError::Config(e.to_string()))?;
+                let markdown_config: config::MarkdownConfig =
+                    serde_json::from_value(config.config.clone())
+                        .map_err(|e| crate::error::KtmeError::Config(e.to_string()))?;
                 Ok(Box::new(markdown::MarkdownProvider::new(markdown_config)))
-            },
-            _ => Err(crate::error::KtmeError::UnsupportedProvider(
-                format!("Provider '{}' is not supported", provider_type)
-            ))
+            }
+            _ => Err(crate::error::KtmeError::UnsupportedProvider(format!(
+                "Provider '{}' is not supported",
+                provider_type
+            ))),
         }
     }
 }

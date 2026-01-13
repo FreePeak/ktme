@@ -1,6 +1,6 @@
 //! Simple test for database connection
-use ktme::storage::database::Database;
 use ktme::error::Result;
+use ktme::storage::database::Database;
 
 fn main() -> Result<()> {
     println!("Testing basic database connection...");
@@ -18,8 +18,9 @@ fn main() -> Result<()> {
             description TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );"
-    ).map_err(|e| ktme::error::KtmeError::Storage(format!("Failed to create table: {}", e)))?;
+        );",
+    )
+    .map_err(|e| ktme::error::KtmeError::Storage(format!("Failed to create table: {}", e)))?;
 
     println!("✅ Database and table created successfully");
 
@@ -27,16 +28,19 @@ fn main() -> Result<()> {
     conn.execute(
         "INSERT INTO services (name, path, description) VALUES (?1, ?2, ?3)",
         rusqlite::params!["test-service", "/test/path", "Test service"],
-    ).map_err(|e| ktme::error::KtmeError::Storage(format!("Failed to insert: {}", e)))?;
+    )
+    .map_err(|e| ktme::error::KtmeError::Storage(format!("Failed to insert: {}", e)))?;
 
     println!("✅ Test record inserted successfully");
 
     // Query the record
-    let name: String = conn.query_row(
-        "SELECT name FROM services WHERE name = ?1",
-        rusqlite::params!["test-service"],
-        |row| row.get(0),
-    ).map_err(|e| ktme::error::KtmeError::Storage(format!("Failed to query: {}", e)))?;
+    let name: String = conn
+        .query_row(
+            "SELECT name FROM services WHERE name = ?1",
+            rusqlite::params!["test-service"],
+            |row| row.get(0),
+        )
+        .map_err(|e| ktme::error::KtmeError::Storage(format!("Failed to query: {}", e)))?;
 
     println!("✅ Retrieved record: {}", name);
 

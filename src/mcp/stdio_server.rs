@@ -10,9 +10,7 @@ pub struct StdioServer {
 
 impl StdioServer {
     pub fn new() -> Self {
-        Self {
-            tools: McpTools,
-        }
+        Self { tools: McpTools }
     }
 
     pub async fn run(&self) -> Result<()> {
@@ -59,7 +57,7 @@ impl StdioServer {
                         Err(_) => {
                             // Extract the request ID for proper error response
                             let request_id = request.get("id").cloned().unwrap_or(json!(null));
-                            
+
                             // Send error response
                             let error_response = json!({
                                 "jsonrpc": "2.0",
@@ -83,9 +81,7 @@ impl StdioServer {
     }
 
     fn handle_message(&self, request: &Value, writer: &mut impl Write) -> Result<bool> {
-        let method = request.get("method")
-            .and_then(|m| m.as_str())
-            .unwrap_or("");
+        let method = request.get("method").and_then(|m| m.as_str()).unwrap_or("");
 
         let id = request.get("id");
 
@@ -204,7 +200,7 @@ impl StdioServer {
                                 },
                                 "required": ["service", "doc_path", "content"]
                             }
-                        })
+                        }),
                     ];
 
                     // Build response without ID field initially
@@ -226,9 +222,7 @@ impl StdioServer {
                 if !is_notification {
                     let empty_params = json!({});
                     let params = request.get("params").unwrap_or(&empty_params);
-                    let tool_name = params.get("name")
-                        .and_then(|n| n.as_str())
-                        .unwrap_or("");
+                    let tool_name = params.get("name").and_then(|n| n.as_str()).unwrap_or("");
 
                     let empty_args = json!({});
                     let arguments = params.get("arguments").unwrap_or(&empty_args);
@@ -236,35 +230,51 @@ impl StdioServer {
                     let result = match tool_name {
                         "read_changes" => {
                             if let Some(source) = arguments.get("source").and_then(|s| s.as_str()) {
-                                McpTools::read_changes(source).unwrap_or_else(|e| format!("Error: {}", e))
+                                McpTools::read_changes(source)
+                                    .unwrap_or_else(|e| format!("Error: {}", e))
                             } else {
                                 "Error: No source provided".to_string()
                             }
                         }
                         "get_service_mapping" => {
-                            if let Some(service) = arguments.get("service").and_then(|s| s.as_str()) {
-                                McpTools::get_service_mapping(service).unwrap_or_else(|e| format!("Error: {}", e))
+                            if let Some(service) = arguments.get("service").and_then(|s| s.as_str())
+                            {
+                                McpTools::get_service_mapping(service)
+                                    .unwrap_or_else(|e| format!("Error: {}", e))
                             } else {
                                 "Error: No service provided".to_string()
                             }
                         }
-                        "list_services" => {
-                            McpTools::list_services()
-                                .map(|s| format!("Services: {}", s.join(", ")))
-                                .unwrap_or_else(|e| format!("Error: {}", e))
-                        }
+                        "list_services" => McpTools::list_services()
+                            .map(|s| format!("Services: {}", s.join(", ")))
+                            .unwrap_or_else(|e| format!("Error: {}", e)),
                         "generate_documentation" => {
-                            let service = arguments.get("service").and_then(|s| s.as_str()).unwrap_or("");
-                            let changes = arguments.get("changes").and_then(|c| c.as_str()).unwrap_or("");
+                            let service = arguments
+                                .get("service")
+                                .and_then(|s| s.as_str())
+                                .unwrap_or("");
+                            let changes = arguments
+                                .get("changes")
+                                .and_then(|c| c.as_str())
+                                .unwrap_or("");
                             let format = arguments.get("format").and_then(|f| f.as_str());
 
                             McpTools::generate_documentation(service, changes, format)
                                 .unwrap_or_else(|e| format!("Error: {}", e))
                         }
                         "update_documentation" => {
-                            let service = arguments.get("service").and_then(|s| s.as_str()).unwrap_or("");
-                            let doc_path = arguments.get("doc_path").and_then(|d| d.as_str()).unwrap_or("");
-                            let content = arguments.get("content").and_then(|c| c.as_str()).unwrap_or("");
+                            let service = arguments
+                                .get("service")
+                                .and_then(|s| s.as_str())
+                                .unwrap_or("");
+                            let doc_path = arguments
+                                .get("doc_path")
+                                .and_then(|d| d.as_str())
+                                .unwrap_or("");
+                            let content = arguments
+                                .get("content")
+                                .and_then(|c| c.as_str())
+                                .unwrap_or("");
 
                             McpTools::update_documentation(service, doc_path, content)
                                 .unwrap_or_else(|e| format!("Error: {}", e))

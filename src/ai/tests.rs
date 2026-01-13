@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use crate::error::KtmeError;
     use crate::ai::client::AIClient;
-    use crate::ai::providers::{OpenAIProvider, ClaudeConfig, OpenAIConfig, AIProvider};
+    use crate::ai::providers::{AIProvider, ClaudeConfig, OpenAIConfig, OpenAIProvider};
+    use crate::error::KtmeError;
 
     #[test]
     fn test_ai_client_fails_without_key() {

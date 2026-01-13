@@ -1,8 +1,8 @@
+use crate::ai::AIClient;
 use crate::error::Result;
 use crate::git::reader::GitReader;
-use crate::storage::mapping::StorageManager;
-use crate::ai::AIClient;
 use crate::service_detector::ServiceDetector;
+use crate::storage::mapping::StorageManager;
 use serde_json;
 
 pub struct McpTools;
@@ -25,21 +25,24 @@ impl McpTools {
             let reader = GitReader::new(None)?;
             let diffs = reader.read_commit_range(file_path)?;
             Ok(serde_json::to_string_pretty(&diffs)?)
-        } else if file_path == "HEAD" || file_path == "HEAD~1" || file_path.len() == 7 || file_path.len() == 40 {
+        } else if file_path == "HEAD"
+            || file_path == "HEAD~1"
+            || file_path.len() == 7
+            || file_path.len() == 40
+        {
             // Handle raw commit hashes and Git references
             let reader = GitReader::new(None)?;
             let diff = reader.read_commit(file_path)?;
             Ok(serde_json::to_string_pretty(&diff)?)
         } else {
             // Try to read as a file containing diff content
-            std::fs::read_to_string(file_path)
-                .map_err(|e| crate::error::KtmeError::Io(e))
+            std::fs::read_to_string(file_path).map_err(|e| crate::error::KtmeError::Io(e))
         }
     }
 
     pub fn get_service_mapping(service: &str) -> Result<String> {
         tracing::info!("MCP Tool: get_service_mapping({})", service);
-        
+
         let storage = StorageManager::new()?;
         let mapping = storage.get_mapping(service)?;
         Ok(serde_json::to_string_pretty(&mapping)?)
@@ -47,17 +50,27 @@ impl McpTools {
 
     pub fn list_services() -> Result<Vec<String>> {
         tracing::info!("MCP Tool: list_services()");
-        
+
         let storage = StorageManager::new()?;
         storage.list_services()
     }
 
-    pub fn generate_documentation(service: &str, changes: &str, format: Option<&str>) -> Result<String> {
-        tracing::info!("MCP Tool: generate_documentation(service={}, format={:?})", service, format);
+    pub fn generate_documentation(
+        service: &str,
+        changes: &str,
+        format: Option<&str>,
+    ) -> Result<String> {
+        tracing::info!(
+            "MCP Tool: generate_documentation(service={}, format={:?})",
+            service,
+            format
+        );
 
         // Parse the changes
-        let diff: crate::git::diff::ExtractedDiff = serde_json::from_str(changes)
-            .map_err(|_| crate::error::KtmeError::InvalidInput("Invalid changes format".to_string()))?;
+        let diff: crate::git::diff::ExtractedDiff =
+            serde_json::from_str(changes).map_err(|_| {
+                crate::error::KtmeError::InvalidInput("Invalid changes format".to_string())
+            })?;
 
         // Try to use AI for intelligent documentation generation
         match AIClient::new() {
@@ -72,8 +85,13 @@ impl McpTools {
         }
     }
 
-    fn generate_ai_documentation(ai_client: &AIClient, service: &str, diff: &crate::git::diff::ExtractedDiff, format: Option<&str>) -> Result<String> {
-        let prompt = format!(
+    fn generate_ai_documentation(
+        _ai_client: &AIClient,
+        service: &str,
+        diff: &crate::git::diff::ExtractedDiff,
+        format: Option<&str>,
+    ) -> Result<String> {
+        let _prompt = format!(
             "Generate comprehensive documentation for the service '{}' based on the following code changes:\n\n\
             Commit Message: {}\n\
             Author: {}\n\
@@ -108,23 +126,26 @@ impl McpTools {
         Ok(Self::generate_basic_documentation(service, diff, format))
     }
 
-    fn generate_basic_documentation(service: &str, diff: &crate::git::diff::ExtractedDiff, format: Option<&str>) -> String {
+    fn generate_basic_documentation(
+        service: &str,
+        diff: &crate::git::diff::ExtractedDiff,
+        format: Option<&str>,
+    ) -> String {
         let output_format = format.unwrap_or("markdown");
 
         match output_format {
-            "json" => {
-                serde_json::to_string_pretty(&serde_json::json!({
-                    "service": service,
-                    "changes": {
-                        "source": diff.source,
-                        "author": diff.author,
-                        "timestamp": diff.timestamp,
-                        "message": diff.message,
-                        "summary": diff.summary,
-                        "files": diff.files
-                    }
-                })).unwrap_or_else(|_| "Error generating JSON".to_string())
-            }
+            "json" => serde_json::to_string_pretty(&serde_json::json!({
+                "service": service,
+                "changes": {
+                    "source": diff.source,
+                    "author": diff.author,
+                    "timestamp": diff.timestamp,
+                    "message": diff.message,
+                    "summary": diff.summary,
+                    "files": diff.files
+                }
+            }))
+            .unwrap_or_else(|_| "Error generating JSON".to_string()),
             _ => {
                 format!("# Documentation for {}\n\n## Changes\n\n**Source:** {}\n**Author:** {}\n**Timestamp:** {}\n\n### Summary\n- {} files changed\n- {} additions\n- {} deletions\n\n### Files Modified\n{}\n\n### Commit Message\n{}\n\n### Technical Details\n\n> **Note**: This is basic documentation. Configure an AI provider (OPENAI_API_KEY or ANTHROPIC_API_KEY) for intelligent documentation generation.\n",
                     service,
@@ -145,11 +166,14 @@ impl McpTools {
     }
 
     pub fn update_documentation(service: &str, doc_path: &str, content: &str) -> Result<String> {
-        tracing::info!("MCP Tool: update_documentation(service={}, doc_path={})", service, doc_path);
+        tracing::info!(
+            "MCP Tool: update_documentation(service={}, doc_path={})",
+            service,
+            doc_path
+        );
 
         // For now, just write to the file
-        std::fs::write(doc_path, content)
-            .map_err(|e| crate::error::KtmeError::Io(e))?;
+        std::fs::write(doc_path, content).map_err(|e| crate::error::KtmeError::Io(e))?;
 
         Ok(format!("Documentation updated at {}", doc_path))
     }
@@ -169,7 +193,9 @@ impl McpTools {
         for (idx, result) in results.iter().enumerate() {
             output.push_str(&format!(
                 "{}. **{}** (Relevance: {:.1})\n",
-                idx + 1, result.name, result.relevance_score
+                idx + 1,
+                result.name,
+                result.relevance_score
             ));
 
             if let Some(ref desc) = result.description {
@@ -229,7 +255,10 @@ impl McpTools {
 
         let mut output = format!("Keyword search results for '{}':\n\n", keyword);
         for result in results {
-            output.push_str(&format!("• **{}** (Score: {:.1})\n", result.name, result.relevance_score));
+            output.push_str(&format!(
+                "• **{}** (Score: {:.1})\n",
+                result.name, result.relevance_score
+            ));
 
             if let Some(ref path) = result.path {
                 output.push_str(&format!("  Path: {}\n", path));
@@ -243,7 +272,11 @@ impl McpTools {
 
     /// Automated workflow: extract → generate → save
     pub fn automated_documentation_workflow(service: &str, source: &str) -> Result<String> {
-        tracing::info!("MCP Tool: automated_documentation_workflow(service={}, source={})", service, source);
+        tracing::info!(
+            "MCP Tool: automated_documentation_workflow(service={}, source={})",
+            service,
+            source
+        );
 
         // Step 1: Extract changes
         let changes = Self::read_changes(source)?;
@@ -278,8 +311,9 @@ impl McpTools {
         let detector = ServiceDetector::new()?;
 
         // Use blocking execution for async function in sync context
-        let rt = tokio::runtime::Runtime::new()
-            .map_err(|e| crate::error::KtmeError::Storage(format!("Failed to create runtime: {}", e)))?;
+        let rt = tokio::runtime::Runtime::new().map_err(|e| {
+            crate::error::KtmeError::Storage(format!("Failed to create runtime: {}", e))
+        })?;
 
         let service_name = rt.block_on(detector.detect_with_ai_fallback())?;
 
@@ -289,11 +323,17 @@ impl McpTools {
 
         if repo_info.is_git_repository {
             if let Some(ref repo_root) = repo_info.repository_root {
-                result.push_str(&format!("**Git Repository Root:** {}\n", repo_root.display()));
+                result.push_str(&format!(
+                    "**Git Repository Root:** {}\n",
+                    repo_root.display()
+                ));
             }
         }
 
-        result.push_str(&format!("**Current Directory:** {}\n", repo_info.current_dir.display()));
+        result.push_str(&format!(
+            "**Current Directory:** {}\n",
+            repo_info.current_dir.display()
+        ));
 
         Ok(result)
     }
@@ -306,7 +346,10 @@ impl McpTools {
         let repo_info = detector.get_repository_info();
 
         let mut result = format!("**Repository Information:**\n\n");
-        result.push_str(&format!("**Current Directory:** {}\n", repo_info.current_dir.display()));
+        result.push_str(&format!(
+            "**Current Directory:** {}\n",
+            repo_info.current_dir.display()
+        ));
 
         if repo_info.is_git_repository {
             result.push_str("**Git Repository:** Yes\n");

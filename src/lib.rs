@@ -12,4 +12,4 @@ pub mod mcp;
 pub mod service_detector;
 pub mod storage;
 
-pub use error::{Result, KtmeError};
+pub use error::{KtmeError, Result};

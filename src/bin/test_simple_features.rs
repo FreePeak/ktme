@@ -1,9 +1,9 @@
 //! Simple feature test without migration conflicts
 
-use ktme::storage::database::Database;
-use ktme::storage::repository::{ServiceRepository, FeatureRepository};
-use ktme::storage::models::{FeatureType, SearchQuery};
 use ktme::error::Result;
+use ktme::storage::database::Database;
+use ktme::storage::models::{FeatureType, SearchQuery};
+use ktme::storage::repository::{FeatureRepository, ServiceRepository};
 
 fn main() -> Result<()> {
     println!("🧪 Simple KTME Feature Test");
@@ -20,7 +20,7 @@ fn main() -> Result<()> {
     let service = service_repo.create(
         "test-service",
         Some("/test/path"),
-        Some("Test service for feature validation")
+        Some("Test service for feature validation"),
     )?;
     println!("✅ Service created: {} (ID: {})", service.name, service.id);
 
@@ -33,7 +33,11 @@ fn main() -> Result<()> {
         "AI Documentation Generator",
         Some("Generates documentation from code changes using AI"),
         FeatureType::Api,
-        vec!["ai".to_string(), "docs".to_string(), "automation".to_string()],
+        vec![
+            "ai".to_string(),
+            "docs".to_string(),
+            "automation".to_string(),
+        ],
         serde_json::json!({
             "complexity": "high",
             "status": "active",
@@ -54,7 +58,9 @@ fn main() -> Result<()> {
             assert_eq!(f.name, "AI Documentation Generator");
         }
         None => {
-            return Err(ktme::error::KtmeError::Storage("Feature not found".to_string()));
+            return Err(ktme::error::KtmeError::Storage(
+                "Feature not found".to_string(),
+            ));
         }
     }
 
@@ -85,10 +91,9 @@ fn main() -> Result<()> {
     println!("✅ Search returned {} results", search_results.len());
 
     for result in &search_results {
-        println!("   - {} in {} (score: {:.2})",
-            result.feature_name,
-            result.service_name,
-            result.relevance_score
+        println!(
+            "   - {} in {} (score: {:.2})",
+            result.feature_name, result.service_name, result.relevance_score
         );
     }
     assert_eq!(search_results.len(), 1);
@@ -107,7 +112,10 @@ fn main() -> Result<()> {
     };
 
     let advanced_results = feature_repo.search(&advanced_query)?;
-    println!("✅ Advanced search returned {} results", advanced_results.len());
+    println!(
+        "✅ Advanced search returned {} results",
+        advanced_results.len()
+    );
     assert_eq!(advanced_results.len(), 1);
 
     // Test 8: Update relevance score
@@ -120,7 +128,9 @@ fn main() -> Result<()> {
             println!("✅ Updated relevance score to {}", f.relevance_score);
         }
         None => {
-            return Err(ktme::error::KtmeError::Storage("Feature not found after update".to_string()));
+            return Err(ktme::error::KtmeError::Storage(
+                "Feature not found after update".to_string(),
+            ));
         }
     }
 

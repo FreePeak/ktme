@@ -1,7 +1,9 @@
+use crate::ai::{prompts::PromptTemplates, AIClient};
+use crate::config::Config;
+use crate::doc::writers::confluence::ConfluenceWriter;
 use crate::error::Result;
-use crate::storage::mapping::StorageManager;
 use crate::git::diff::DiffExtractor;
-use crate::ai::{AIClient, prompts::PromptTemplates};
+use crate::storage::mapping::StorageManager;
 use std::fs;
 
 pub async fn execute(
@@ -19,9 +21,10 @@ pub async fn execute(
     let mapping = storage.get_mapping(&service)?;
 
     if mapping.docs.is_empty() {
-        return Err(crate::error::KtmeError::DocumentNotFound(
-            format!("No documentation locations mapped for service: {}", service)
-        ));
+        return Err(crate::error::KtmeError::DocumentNotFound(format!(
+            "No documentation locations mapped for service: {}",
+            service
+        )));
     }
 
     // Extract changes
@@ -32,7 +35,7 @@ pub async fn execute(
     } else if let Some(pr_number) = pr {
         tracing::info!("Using PR: #{}", pr_number);
         return Err(crate::error::KtmeError::UnsupportedProvider(
-            "PR-based updates are not yet implemented".to_string()
+            "PR-based updates are not yet implemented".to_string(),
         ));
     } else if staged {
         tracing::info!("Using staged changes");
@@ -40,7 +43,7 @@ pub async fn execute(
         extractor.extract()?
     } else {
         return Err(crate::error::KtmeError::InvalidInput(
-            "No source specified. Use --commit, --pr, or --staged".to_string()
+            "No source specified. Use --commit, --pr, or --staged".to_string(),
         ));
     };
 
@@ -70,8 +73,8 @@ pub async fn execute(
                 println!("✓ Updated markdown file: {}", doc_location.location);
             }
             "confluence" => {
-                // TODO: Implement Confluence update
-                println!("⚠ Confluence updates not yet implemented: {}", doc_location.location);
+                update_confluence_page(&doc_location.location, &update_content).await?;
+                println!("✓ Updated Confluence page: {}", doc_location.location);
             }
             _ => {
                 println!("⚠ Unknown documentation type: {}", doc_location.r#type);
@@ -84,22 +87,23 @@ pub async fn execute(
 }
 
 fn update_markdown_file(file_path: &str, content: &str, section: Option<&str>) -> Result<()> {
-    let existing_content = fs::read_to_string(file_path)
-        .map_err(|e| crate::error::KtmeError::Io(e))?;
+    let existing_content =
+        fs::read_to_string(file_path).map_err(|e| crate::error::KtmeError::Io(e))?;
 
     let updated_content = if let Some(section_name) = section {
         // Find and update specific section
         update_markdown_section(&existing_content, section_name, content)
     } else {
         // Append to end of file
-        format!("{}\n\n---\n\n## Update {}\n\n{}",
-                existing_content,
-                chrono::Utc::now().format("%Y-%m-%d"),
-                content)
+        format!(
+            "{}\n\n---\n\n## Update {}\n\n{}",
+            existing_content,
+            chrono::Utc::now().format("%Y-%m-%d"),
+            content
+        )
     };
 
-    fs::write(file_path, updated_content)
-        .map_err(|e| crate::error::KtmeError::Io(e))?;
+    fs::write(file_path, updated_content).map_err(|e| crate::error::KtmeError::Io(e))?;
 
     Ok(())
 }
@@ -134,4 +138,74 @@ fn update_markdown_section(content: &str, section_name: &str, new_content: &str)
     }
 
     result.join("\n")
+}
+
+async fn update_confluence_page(location: &str, content: &str) -> Result<()> {
+    tracing::info!("Updating Confluence page at: {}", location);
+
+    // Load Confluence configuration from config file
+    let config = Config::load()?;
+    let confluence_config = config.confluence;
+
+    // Validate required configuration fields
+    let base_url = confluence_config.base_url.ok_or_else(|| {
+        crate::error::KtmeError::Config(
+            "Confluence base_url not configured. Please set [confluence] base_url in config.toml"
+                .to_string(),
+        )
+    })?;
+
+    let api_token = confluence_config.api_token.ok_or_else(|| {
+        crate::error::KtmeError::Config(
+            "Confluence api_token not configured. Please set [confluence] api_token in config.toml"
+                .to_string(),
+        )
+    })?;
+
+    let space_key = confluence_config.space_key.ok_or_else(|| {
+        crate::error::KtmeError::Config(
+            "Confluence space_key not configured. Please set [confluence] space_key in config.toml"
+                .to_string(),
+        )
+    })?;
+
+    // Parse page ID from location (expecting URL like https://confluence.example.com/pages/viewpage.action?pageId=123456)
+    let page_id = extract_confluence_page_id(location)?;
+
+    // Create Confluence writer
+    let writer = ConfluenceWriter::new(base_url, api_token, space_key);
+
+    // Update the page
+    writer.update_page(&page_id, content).await?;
+
+    Ok(())
+}
+
+fn extract_confluence_page_id(url: &str) -> Result<String> {
+    // Try to extract page ID from URL patterns:
+    // 1. https://confluence.example.com/pages/viewpage.action?pageId=123456
+    // 2. https://confluence.example.com/display/SPACE/Page+Title (would need API call)
+    // 3. Just the page ID itself: "123456"
+
+    // Check if it's already just a page ID (all digits)
+    if url.chars().all(|c| c.is_ascii_digit()) {
+        return Ok(url.to_string());
+    }
+
+    // Try to extract from URL
+    if let Some(page_id_pos) = url.find("pageId=") {
+        let start = page_id_pos + 7; // Length of "pageId="
+        let page_id = url[start..].split('&').next().unwrap_or("").to_string();
+        if !page_id.is_empty() {
+            return Ok(page_id);
+        }
+    }
+
+    // If we can't extract it, return an error with helpful message
+    Err(crate::error::KtmeError::Config(format!(
+        "Could not extract Confluence page ID from location: {}. \
+        Please use either a full Confluence URL with pageId parameter, \
+        or just the page ID number.",
+        url
+    )))
 }

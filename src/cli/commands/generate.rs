@@ -1,5 +1,5 @@
+use crate::ai::{prompts::PromptTemplates, AIClient};
 use crate::error::Result;
-use crate::ai::{AIClient, prompts::PromptTemplates};
 use crate::git::diff::{DiffExtractor, ExtractedDiff};
 use std::fs;
 use std::path::Path;
@@ -33,11 +33,11 @@ pub async fn execute(
     } else if let Some(pr_number) = pr {
         tracing::info!("Using PR: #{}", pr_number);
         return Err(crate::error::KtmeError::UnsupportedProvider(
-            "PR-based documentation generation is not yet implemented".to_string()
+            "PR-based documentation generation is not yet implemented".to_string(),
         ));
     } else {
         return Err(crate::error::KtmeError::InvalidInput(
-            "No source specified. Use --commit, --input, --staged, or --pr".to_string()
+            "No source specified. Use --commit, --input, --staged, or --pr".to_string(),
         ));
     };
 
@@ -89,16 +89,14 @@ pub async fn execute(
 }
 
 fn load_diff_from_file(file_path: &str) -> Result<ExtractedDiff> {
-    let content = fs::read_to_string(file_path)
-        .map_err(|e| crate::error::KtmeError::Io(e))?;
+    let content = fs::read_to_string(file_path).map_err(|e| crate::error::KtmeError::Io(e))?;
 
-    serde_json::from_str(&content)
-        .map_err(|e| crate::error::KtmeError::Serialization(e))
+    serde_json::from_str(&content).map_err(|e| crate::error::KtmeError::Serialization(e))
 }
 
 fn load_custom_template(template_file: &str, diff: &ExtractedDiff) -> Result<String> {
-    let template_content = fs::read_to_string(template_file)
-        .map_err(|e| crate::error::KtmeError::Io(e))?;
+    let template_content =
+        fs::read_to_string(template_file).map_err(|e| crate::error::KtmeError::Io(e))?;
 
     // Simple template substitution
     let mut prompt = template_content;
@@ -111,7 +109,10 @@ fn load_custom_template(template_file: &str, diff: &ExtractedDiff) -> Result<Str
     prompt = prompt.replace("{{DELETIONS}}", &diff.summary.total_deletions.to_string());
 
     // Add diff content at the end
-    prompt.push_str(&format!("\n\nChanges:\n{}", PromptTemplates::format_diff_content(diff)));
+    prompt.push_str(&format!(
+        "\n\nChanges:\n{}",
+        PromptTemplates::format_diff_content(diff)
+    ));
 
     Ok(prompt)
 }
@@ -130,12 +131,10 @@ fn write_output(content: &str, output: Option<&str>) -> Result<()> {
         Some(path) => {
             // Create parent directories if they don't exist
             if let Some(parent) = Path::new(path).parent() {
-                fs::create_dir_all(parent)
-                    .map_err(|e| crate::error::KtmeError::Io(e))?;
+                fs::create_dir_all(parent).map_err(|e| crate::error::KtmeError::Io(e))?;
             }
 
-            fs::write(path, content)
-                .map_err(|e| crate::error::KtmeError::Io(e))?;
+            fs::write(path, content).map_err(|e| crate::error::KtmeError::Io(e))?;
 
             println!("Documentation saved to: {}", path);
         }
@@ -153,12 +152,10 @@ fn write_json_output(json: &serde_json::Value, output: Option<&str>) -> Result<(
     match output {
         Some(path) => {
             if let Some(parent) = Path::new(path).parent() {
-                fs::create_dir_all(parent)
-                    .map_err(|e| crate::error::KtmeError::Io(e))?;
+                fs::create_dir_all(parent).map_err(|e| crate::error::KtmeError::Io(e))?;
             }
 
-            fs::write(path, json_content)
-                .map_err(|e| crate::error::KtmeError::Io(e))?;
+            fs::write(path, json_content).map_err(|e| crate::error::KtmeError::Io(e))?;
 
             println!("JSON documentation saved to: {}", path);
         }

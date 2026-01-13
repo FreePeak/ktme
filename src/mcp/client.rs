@@ -9,7 +9,7 @@ impl McpClient {
         Self { model }
     }
 
-    pub async fn send_request(&self, prompt: &str) -> Result<String> {
+    pub async fn send_request(&self, _prompt: &str) -> Result<String> {
         tracing::info!("Sending request to MCP server using model: {}", self.model);
         // TODO: Implement MCP client communication
         Ok("Response placeholder".to_string())

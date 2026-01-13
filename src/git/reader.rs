@@ -1,7 +1,7 @@
 use crate::error::Result;
 use crate::git::diff::ExtractedDiff;
 use chrono::{DateTime, Utc};
-use git2::{Repository, Commit, Diff, DiffOptions, Oid, Status, StatusOptions};
+use git2::{Commit, Diff, DiffOptions, Oid, Repository, Status, StatusOptions};
 
 pub struct GitReader {
     repo: Repository,
@@ -10,7 +10,10 @@ pub struct GitReader {
 impl std::fmt::Debug for GitReader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("GitReader")
-            .field("repo_path", &self.repo.workdir().map(|p| p.to_string_lossy()))
+            .field(
+                "repo_path",
+                &self.repo.workdir().map(|p| p.to_string_lossy()),
+            )
             .finish()
     }
 }
@@ -18,7 +21,9 @@ impl std::fmt::Debug for GitReader {
 impl Clone for GitReader {
     fn clone(&self) -> Self {
         // Clone by opening the same repository again
-        let path = self.repo.workdir()
+        let path = self
+            .repo
+            .workdir()
             .map(|p| p.to_string_lossy().to_string())
             .expect("Repository must have a workdir");
         Self {
@@ -39,8 +44,12 @@ impl GitReader {
     }
 
     pub fn get_repository_path(&self) -> Result<String> {
-        Ok(self.repo.workdir()
-            .ok_or_else(|| crate::error::KtmeError::Git(git2::Error::from_str("Not a working directory")))?
+        Ok(self
+            .repo
+            .workdir()
+            .ok_or_else(|| {
+                crate::error::KtmeError::Git(git2::Error::from_str("Not a working directory"))
+            })?
             .to_string_lossy()
             .to_string())
     }
@@ -56,15 +65,21 @@ impl GitReader {
     pub fn read_staged(&self) -> Result<ExtractedDiff> {
         tracing::info!("Reading staged changes");
 
-        let head_oid = self.repo.refname_to_id("HEAD")
+        let head_oid = self
+            .repo
+            .refname_to_id("HEAD")
             .map_err(|e| crate::error::KtmeError::Git(e))?;
         let head_commit = self.repo.find_commit(head_oid)?;
 
-        let tree_oid = self.repo.index()
+        let tree_oid = self
+            .repo
+            .index()
             .map_err(|e| crate::error::KtmeError::Git(e))?
             .write_tree()
             .map_err(|e| crate::error::KtmeError::Git(e))?;
-        let tree = self.repo.find_tree(tree_oid)
+        let tree = self
+            .repo
+            .find_tree(tree_oid)
             .map_err(|e| crate::error::KtmeError::Git(e))?;
 
         self.extract_tree_diff("staged", "staged", &head_commit.tree()?, &tree)
@@ -76,16 +91,19 @@ impl GitReader {
         let parts: Vec<&str> = range.split("..").collect();
         if parts.len() != 2 {
             return Err(crate::error::KtmeError::InvalidInput(
-                "Invalid range format. Use: start..end".to_string()
+                "Invalid range format. Use: start..end".to_string(),
             ));
         }
 
         let start_oid = self.resolve_reference(parts[0])?;
         let end_oid = self.resolve_reference(parts[1])?;
 
-        let mut revwalk = self.repo.revwalk()
+        let mut revwalk = self
+            .repo
+            .revwalk()
             .map_err(|e| crate::error::KtmeError::Git(e))?;
-        revwalk.push_range(&format!("{}..{}", start_oid, end_oid))
+        revwalk
+            .push_range(&format!("{}..{}", start_oid, end_oid))
             .map_err(|e| crate::error::KtmeError::Git(e))?;
 
         let mut diffs = Vec::new();
@@ -99,7 +117,9 @@ impl GitReader {
     }
 
     pub fn get_current_branch(&self) -> Result<String> {
-        let head = self.repo.head()
+        let head = self
+            .repo
+            .head()
             .map_err(|e| crate::error::KtmeError::Git(e))?;
 
         if let Some(name) = head.shorthand() {
@@ -115,7 +135,9 @@ impl GitReader {
             .include_ignored(false)
             .recurse_untracked_dirs(true);
 
-        let statuses = self.repo.statuses(Some(&mut opts))
+        let statuses = self
+            .repo
+            .statuses(Some(&mut opts))
             .map_err(|e| crate::error::KtmeError::Git(e))?;
 
         let mut results = Vec::new();
@@ -161,9 +183,9 @@ impl GitReader {
             }
         }
 
-        Err(crate::error::KtmeError::Git(
-            git2::Error::from_str(&format!("Reference '{}' not found", reference))
-        ))
+        Err(crate::error::KtmeError::Git(git2::Error::from_str(
+            &format!("Reference '{}' not found", reference),
+        )))
     }
 
     fn extract_commit_diff(&self, commit: &Commit) -> Result<ExtractedDiff> {
@@ -177,10 +199,13 @@ impl GitReader {
             )
         } else {
             // Initial commit - compare with empty tree
-            let empty_tree = self.repo.find_tree(self.repo.treebuilder(None)
-                .map_err(|e| crate::error::KtmeError::Git(e))?
-                .write()
-                .map_err(|e| crate::error::KtmeError::Git(e))?)?;
+            let empty_tree = self.repo.find_tree(
+                self.repo
+                    .treebuilder(None)
+                    .map_err(|e| crate::error::KtmeError::Git(e))?
+                    .write()
+                    .map_err(|e| crate::error::KtmeError::Git(e))?,
+            )?;
 
             self.extract_tree_diff(
                 &commit.id().to_string(),
@@ -199,21 +224,21 @@ impl GitReader {
         new_tree: &git2::Tree,
     ) -> Result<ExtractedDiff> {
         let mut diff_opts = DiffOptions::new();
-        diff_opts.context_lines(3)
-            .include_unmodified(false);
+        diff_opts.context_lines(3).include_unmodified(false);
 
-        let diff = self.repo.diff_tree_to_tree(
-            Some(old_tree),
-            Some(new_tree),
-            Some(&mut diff_opts),
-        ).map_err(|e| crate::error::KtmeError::Git(e))?;
+        let diff = self
+            .repo
+            .diff_tree_to_tree(Some(old_tree), Some(new_tree), Some(&mut diff_opts))
+            .map_err(|e| crate::error::KtmeError::Git(e))?;
 
         let mut files = Vec::new();
         let mut total_additions = 0;
         let mut total_deletions = 0;
 
         for delta in diff.deltas() {
-            let path = delta.new_file().path()
+            let path = delta
+                .new_file()
+                .path()
                 .or_else(|| delta.old_file().path())
                 .unwrap_or_else(|| std::path::Path::new(""))
                 .to_string_lossy()
@@ -229,7 +254,8 @@ impl GitReader {
                 _ => "unknown",
             };
 
-            let (additions, deletions, diff_text) = self.get_file_stats(&diff, delta.old_file().id(), delta.new_file().id())?;
+            let (additions, deletions, diff_text) =
+                self.get_file_stats(&diff, delta.old_file().id(), delta.new_file().id())?;
 
             total_additions += additions;
             total_deletions += deletions;
@@ -253,10 +279,18 @@ impl GitReader {
                     .to_rfc3339();
                 (author_name, commit_message, commit_time)
             } else {
-                ("Unknown".to_string(), "No message".to_string(), Utc::now().to_rfc3339())
+                (
+                    "Unknown".to_string(),
+                    "No message".to_string(),
+                    Utc::now().to_rfc3339(),
+                )
             }
         } else {
-            ("Unknown".to_string(), "No message".to_string(), Utc::now().to_rfc3339())
+            (
+                "Unknown".to_string(),
+                "No message".to_string(),
+                Utc::now().to_rfc3339(),
+            )
         };
 
         let total_files = files.len() as u32;
@@ -275,14 +309,21 @@ impl GitReader {
         })
     }
 
-    fn get_file_stats(&self, diff: &Diff, _old_id: git2::Oid, _new_id: git2::Oid) -> Result<(u32, u32, String)> {
+    fn get_file_stats(
+        &self,
+        diff: &Diff,
+        _old_id: git2::Oid,
+        _new_id: git2::Oid,
+    ) -> Result<(u32, u32, String)> {
         let mut additions = 0u32;
         let mut deletions = 0u32;
         let mut diff_text = String::new();
 
         diff.foreach(
             &mut |delta, _hunk| {
-                let path = delta.new_file().path()
+                let path = delta
+                    .new_file()
+                    .path()
                     .or_else(|| delta.old_file().path())
                     .unwrap_or_else(|| std::path::Path::new(""))
                     .to_string_lossy();
@@ -311,11 +352,15 @@ impl GitReader {
                     _ => "",
                 };
 
-                diff_text.push_str(&format!("{}{}\n", prefix,
-                    String::from_utf8_lossy(line.content()).trim_end()));
+                diff_text.push_str(&format!(
+                    "{}{}\n",
+                    prefix,
+                    String::from_utf8_lossy(line.content()).trim_end()
+                ));
                 true
             }),
-        ).map_err(|e| crate::error::KtmeError::Git(e))?;
+        )
+        .map_err(|e| crate::error::KtmeError::Git(e))?;
 
         Ok((additions, deletions, diff_text))
     }

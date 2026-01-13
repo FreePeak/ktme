@@ -1,8 +1,8 @@
 use crate::config::Config;
 use crate::error::{KtmeError, Result};
 use crate::storage::database::Database;
-use crate::storage::repository::{ServiceRepository, DocumentMappingRepository, FeatureRepository};
 use crate::storage::models::{FeatureType, SearchQuery, SearchResult};
+use crate::storage::repository::{DocumentMappingRepository, FeatureRepository, ServiceRepository};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -71,7 +71,11 @@ impl StorageManager {
             None
         };
 
-        Ok(Self { mappings_file, database, use_sqlite })
+        Ok(Self {
+            mappings_file,
+            database,
+            use_sqlite,
+        })
     }
 
     pub fn load_mappings(&self) -> Result<Mappings> {
@@ -108,7 +112,11 @@ impl StorageManager {
                 // Create or get service
                 let service_entity = match service_repo.get_by_name(&service)? {
                     Some(s) => s,
-                    None => service_repo.create(&service, Some(&location), Some(&format!("Service for {}", service)))?,
+                    None => service_repo.create(
+                        &service,
+                        Some(&location),
+                        Some(&format!("Service for {}", service)),
+                    )?,
                 };
 
                 // Add document mapping
@@ -159,14 +167,18 @@ impl StorageManager {
                 let service_repo = ServiceRepository::new(db.clone());
                 let mapping_repo = DocumentMappingRepository::new(db.clone());
 
-                let service_entity = service_repo.get_by_name(service)?
+                let service_entity = service_repo
+                    .get_by_name(service)?
                     .ok_or_else(|| KtmeError::MappingNotFound(service.to_string()))?;
 
                 let mappings = mapping_repo.get_for_service(service_entity.id)?;
-                let docs = mappings.into_iter().map(|m| DocumentLocation {
-                    r#type: m.provider,
-                    location: m.location,
-                }).collect();
+                let docs = mappings
+                    .into_iter()
+                    .map(|m| DocumentLocation {
+                        r#type: m.provider,
+                        location: m.location,
+                    })
+                    .collect();
 
                 Ok(ServiceMapping {
                     name: service_entity.name,
@@ -199,8 +211,10 @@ impl StorageManager {
         Ok(())
     }
 
-    
-    pub fn discover_services(&self, directory: &str) -> Result<Vec<crate::storage::discovery::DiscoveredService>> {
+    pub fn discover_services(
+        &self,
+        directory: &str,
+    ) -> Result<Vec<crate::storage::discovery::DiscoveredService>> {
         use crate::storage::discovery::ServiceDiscovery;
         let discovery = ServiceDiscovery::new(directory.to_string());
         discovery.discover()
@@ -238,7 +252,8 @@ impl StorageManager {
                     let relevance_score = self.calculate_relevance(&service, query);
                     if relevance_score > 0.0 {
                         let mappings = mapping_repo.get_for_service(service.id)?;
-                        let docs: Vec<String> = mappings.into_iter()
+                        let docs: Vec<String> = mappings
+                            .into_iter()
                             .map(|m| format!("{}: {}", m.provider, m.location))
                             .collect();
 
@@ -266,7 +281,9 @@ impl StorageManager {
             for service in mappings.services {
                 let relevance_score = self.calculate_service_relevance(&service, query);
                 if relevance_score > 0.0 {
-                    let docs: Vec<String> = service.docs.into_iter()
+                    let docs: Vec<String> = service
+                        .docs
+                        .into_iter()
                         .map(|d| format!("{}: {}", d.r#type, d.location))
                         .collect();
 
@@ -363,7 +380,9 @@ impl StorageManager {
                 Err(KtmeError::Storage("SQLite not initialized".to_string()))
             }
         } else {
-            Err(KtmeError::Storage("SQLite not enabled in configuration".to_string()))
+            Err(KtmeError::Storage(
+                "SQLite not enabled in configuration".to_string(),
+            ))
         }
     }
 
@@ -391,17 +410,26 @@ impl StorageManager {
         metadata: serde_json::Value,
     ) -> Result<crate::storage::models::Feature> {
         if !self.use_sqlite {
-            return Err(KtmeError::Storage("Features require SQLite storage".to_string()));
+            return Err(KtmeError::Storage(
+                "Features require SQLite storage".to_string(),
+            ));
         }
 
-        let db = self.database.as_ref().ok_or_else(|| KtmeError::Storage("Database not initialized".to_string()))?;
+        let db = self
+            .database
+            .as_ref()
+            .ok_or_else(|| KtmeError::Storage("Database not initialized".to_string()))?;
         let service_repo = ServiceRepository::new(db.clone());
         let feature_repo = FeatureRepository::new(db.clone());
 
         // Find or create service
         let service = match service_repo.get_by_name(service_name)? {
             Some(service) => service,
-            None => service_repo.create(service_name, None, Some(&format!("Auto-created service for {}", service_name)))?,
+            None => service_repo.create(
+                service_name,
+                None,
+                Some(&format!("Auto-created service for {}", service_name)),
+            )?,
         };
 
         // Create feature with UUID
@@ -418,12 +446,20 @@ impl StorageManager {
     }
 
     /// Get features for a service
-    pub fn get_service_features(&self, service_name: &str) -> Result<Vec<crate::storage::models::Feature>> {
+    pub fn get_service_features(
+        &self,
+        service_name: &str,
+    ) -> Result<Vec<crate::storage::models::Feature>> {
         if !self.use_sqlite {
-            return Err(KtmeError::Storage("Features require SQLite storage".to_string()));
+            return Err(KtmeError::Storage(
+                "Features require SQLite storage".to_string(),
+            ));
         }
 
-        let db = self.database.as_ref().ok_or_else(|| KtmeError::Storage("Database not initialized".to_string()))?;
+        let db = self
+            .database
+            .as_ref()
+            .ok_or_else(|| KtmeError::Storage("Database not initialized".to_string()))?;
         let service_repo = ServiceRepository::new(db.clone());
         let feature_repo = FeatureRepository::new(db.clone());
 
@@ -437,17 +473,26 @@ impl StorageManager {
     /// Search features across all services
     pub fn search_features(&self, query: &SearchQuery) -> Result<Vec<SearchResult>> {
         if !self.use_sqlite {
-            return Err(KtmeError::Storage("Feature search requires SQLite storage".to_string()));
+            return Err(KtmeError::Storage(
+                "Feature search requires SQLite storage".to_string(),
+            ));
         }
 
-        let db = self.database.as_ref().ok_or_else(|| KtmeError::Storage("Database not initialized".to_string()))?;
+        let db = self
+            .database
+            .as_ref()
+            .ok_or_else(|| KtmeError::Storage("Database not initialized".to_string()))?;
         let feature_repo = FeatureRepository::new(db.clone());
 
         feature_repo.search(query)
     }
 
     /// Simple feature search by text
-    pub fn search_features_by_text(&self, query: &str, limit: Option<u32>) -> Result<Vec<SearchResult>> {
+    pub fn search_features_by_text(
+        &self,
+        query: &str,
+        limit: Option<u32>,
+    ) -> Result<Vec<SearchResult>> {
         let search_query = SearchQuery {
             query: query.to_string(),
             service_ids: None,
@@ -465,10 +510,15 @@ impl StorageManager {
     /// Update feature relevance score
     pub fn update_feature_relevance(&self, feature_id: &str, score: f64) -> Result<()> {
         if !self.use_sqlite {
-            return Err(KtmeError::Storage("Feature management requires SQLite storage".to_string()));
+            return Err(KtmeError::Storage(
+                "Feature management requires SQLite storage".to_string(),
+            ));
         }
 
-        let db = self.database.as_ref().ok_or_else(|| KtmeError::Storage("Database not initialized".to_string()))?;
+        let db = self
+            .database
+            .as_ref()
+            .ok_or_else(|| KtmeError::Storage("Database not initialized".to_string()))?;
         let feature_repo = FeatureRepository::new(db.clone());
 
         feature_repo.update_relevance_score(feature_id, score)

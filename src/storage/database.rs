@@ -1,5 +1,5 @@
 use crate::error::{KtmeError, Result};
-use rusqlite::{Connection, OpenFlags, params};
+use rusqlite::{params, Connection, OpenFlags};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -16,8 +16,7 @@ impl Database {
     pub fn new(path: Option<PathBuf>) -> Result<Self> {
         let db_path = path.unwrap_or_else(|| {
             // Use ~/.config/ktme/ktme.db explicitly
-            let home_dir = dirs::home_dir()
-                .unwrap_or_else(|| PathBuf::from("."));
+            let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
             let config_dir = home_dir.join(".config").join("ktme");
             if let Err(e) = std::fs::create_dir_all(&config_dir) {
                 tracing::warn!("Failed to create config directory: {}", e);
@@ -67,30 +66,42 @@ impl Database {
             "CREATE TABLE IF NOT EXISTS schema_versions (
                 version INTEGER PRIMARY KEY,
                 applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );"
-        ).map_err(|e| KtmeError::Storage(format!("Failed to create schema_versions table: {}", e)))?;
+            );",
+        )
+        .map_err(|e| {
+            KtmeError::Storage(format!("Failed to create schema_versions table: {}", e))
+        })?;
 
         // Get current version (should be 0 for new in-memory DB)
         let current_version: i64 = conn
-            .query_row("SELECT MAX(version) FROM schema_versions", [], |row| row.get(0))
+            .query_row("SELECT MAX(version) FROM schema_versions", [], |row| {
+                row.get(0)
+            })
             .unwrap_or(0);
 
         // Run migrations in order directly (no mutex needed)
         let migrations = vec![
             (1, include_str!("../../migrations/001_initial.sql")),
-            (2, include_str!("../../migrations/002_features_and_search.sql")),
+            (
+                2,
+                include_str!("../../migrations/002_features_and_search.sql"),
+            ),
         ];
 
         for (version, sql) in &migrations {
             if *version > current_version {
-                conn.execute_batch(sql)
-                    .map_err(|e| KtmeError::Storage(format!("Migration {} failed: {}", version, e)))?;
+                conn.execute_batch(sql).map_err(|e| {
+                    KtmeError::Storage(format!("Migration {} failed: {}", version, e))
+                })?;
 
                 // Record the migration
                 conn.execute(
                     "INSERT OR IGNORE INTO schema_versions (version) VALUES (?1)",
                     rusqlite::params![version],
-                ).map_err(|e| KtmeError::Storage(format!("Failed to record migration {}: {}", version, e)))?;
+                )
+                .map_err(|e| {
+                    KtmeError::Storage(format!("Failed to record migration {}: {}", version, e))
+                })?;
             }
         }
 
@@ -111,12 +122,17 @@ impl Database {
             "CREATE TABLE IF NOT EXISTS schema_versions (
                 version INTEGER PRIMARY KEY,
                 applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );"
-        ).map_err(|e| KtmeError::Storage(format!("Failed to create schema_versions table: {}", e)))?;
+            );",
+        )
+        .map_err(|e| {
+            KtmeError::Storage(format!("Failed to create schema_versions table: {}", e))
+        })?;
 
         // Get current version
         let current_version: i64 = conn
-            .query_row("SELECT MAX(version) FROM schema_versions", [], |row| row.get(0))
+            .query_row("SELECT MAX(version) FROM schema_versions", [], |row| {
+                row.get(0)
+            })
             .unwrap_or(0);
 
         tracing::info!("Current database schema version: {}", current_version);
@@ -124,7 +140,10 @@ impl Database {
         // Run migrations in order
         let migrations = vec![
             (1, include_str!("../../migrations/001_initial.sql")),
-            (2, include_str!("../../migrations/002_features_and_search.sql")),
+            (
+                2,
+                include_str!("../../migrations/002_features_and_search.sql"),
+            ),
         ];
 
         let latest_version = migrations.last().map(|(v, _)| *v).unwrap_or(0);
@@ -132,20 +151,27 @@ impl Database {
         for (version, sql) in &migrations {
             if *version > current_version {
                 tracing::info!("Running migration version: {}", version);
-                conn.execute_batch(sql)
-                    .map_err(|e| KtmeError::Storage(format!("Migration {} failed: {}", version, e)))?;
+                conn.execute_batch(sql).map_err(|e| {
+                    KtmeError::Storage(format!("Migration {} failed: {}", version, e))
+                })?;
 
                 // Record the migration
                 conn.execute(
                     "INSERT OR IGNORE INTO schema_versions (version) VALUES (?1)",
                     params![version],
-                ).map_err(|e| KtmeError::Storage(format!("Failed to record migration {}: {}", version, e)))?;
+                )
+                .map_err(|e| {
+                    KtmeError::Storage(format!("Failed to record migration {}: {}", version, e))
+                })?;
 
                 tracing::debug!("Migration {} completed successfully", version);
             }
         }
 
-        tracing::info!("Database migrations completed. Latest version: {}", latest_version);
+        tracing::info!(
+            "Database migrations completed. Latest version: {}",
+            latest_version
+        );
         Ok(())
     }
 
@@ -196,9 +222,7 @@ impl Database {
             .unwrap_or(0);
 
         let feature_count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM features", [], |row| {
-                row.get(0)
-            })
+            .query_row("SELECT COUNT(*) FROM features", [], |row| row.get(0))
             .unwrap_or(0);
 
         Ok(DatabaseStats {
@@ -299,6 +323,9 @@ mod tests {
         let stats = db.stats().expect("Failed to get stats");
 
         // The feature_count field should be available
-        assert!(stats.feature_count >= 0, "Feature count should be available in stats");
+        assert!(
+            stats.feature_count >= 0,
+            "Feature count should be available in stats"
+        );
     }
 }
