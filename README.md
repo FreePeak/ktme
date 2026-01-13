@@ -22,6 +22,9 @@ KTME is a CLI tool and MCP server that automatically generates and maintains doc
 ### Installation
 
 ```bash
+# Install via npm (recommended - easiest)
+npm install -g ktme-cli
+
 # Install from crates.io
 cargo install ktme
 
