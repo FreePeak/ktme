@@ -1,6 +1,6 @@
 [package]
 name = "ktme"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 authors = ["linhdmn <mnhatlinh.doan@gmail.com>"]
 description = "Knowledge Transfer Me - Automated documentation generation from code changes using AI"
@@ -19,6 +19,9 @@ serde_json = "1.0"
 
 # Git Integration
 git2 = "0.18"
+
+# OpenSSL (vendored for static linking and cross-compilation)
+openssl = { version = "0.10", features = ["vendored"] }
 
 # HTTP Client (for Confluence, GitHub, GitLab APIs)
 reqwest = { version = "0.12", features = ["json", "blocking"] }

@@ -43,15 +43,13 @@ jobs:
       if: runner.os == 'Linux' && matrix.target == 'x86_64-unknown-linux-gnu'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libssl-dev pkg-config cmake
+        sudo apt-get install -y pkg-config cmake perl
 
     - name: Install Linux dependencies (musl)
       if: runner.os == 'Linux' && matrix.target == 'x86_64-unknown-linux-musl'
       run: |
         sudo apt-get update
-        sudo apt-get install -y musl-tools musl-dev cmake
-      env:
-        CC: musl-gcc
+        sudo apt-get install -y musl-tools musl-dev cmake perl
 
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
