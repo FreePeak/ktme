@@ -127,6 +127,18 @@ enum Commands {
         #[command(subcommand)]
         command: ConfigCommands,
     },
+
+    /// Initialize project documentation and knowledge graph
+    Init {
+        #[arg(long, help = "Project directory path (defaults to current directory)")]
+        path: Option<String>,
+
+        #[arg(long, help = "Service name (auto-detected if not provided)")]
+        service: Option<String>,
+
+        #[arg(long, help = "Force re-initialization even if already initialized")]
+        force: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -338,6 +350,13 @@ async fn main() -> Result<()> {
                 cli::commands::config::validate().await?;
             }
         },
+        Commands::Init {
+            path,
+            service,
+            force,
+        } => {
+            cli::commands::init::execute(path, service, force).await?;
+        }
     }
 
     Ok(())

@@ -10,7 +10,9 @@ KTME is a CLI tool and MCP server that automatically generates and maintains doc
 
 ## Features
 
+- **Auto-Initialization** - Automatically creates documentation structure and knowledge graph on first use
 - **Smart Documentation Generation** - AI-powered documentation from Git diffs, commits, and PRs
+- **Knowledge Graph** - Tracks features, relationships, and documentation across services
 - **Multiple Integrations** - GitHub, GitLab, and Confluence support
 - **Template System** - Customizable Markdown templates with variable substitution
 - **MCP Server** - Model Context Protocol server for AI agent integration
@@ -36,7 +38,13 @@ cargo install --path .
 ### Basic Usage
 
 ```bash
-# Generate docs from staged changes
+# Initialize project documentation and knowledge graph
+ktme init --service my-service
+
+# Or initialize with auto-detection
+ktme init
+
+# Generate docs from staged changes (auto-initializes if needed)
 ktme generate --service my-service --staged
 
 # Extract GitHub PR and generate docs
@@ -79,7 +87,29 @@ model = "gpt-4"
 
 ## Core Capabilities
 
-### 1. Git Integration
+### 1. Initialization & Setup
+
+Initialize your project documentation and knowledge graph:
+```bash
+# Initialize in current directory
+ktme init
+
+# Initialize with specific service name
+ktme init --service my-api-service
+
+# Initialize in a different directory
+ktme init --path /path/to/project --service my-service
+
+# Force re-initialization
+ktme init --service my-service --force
+```
+
+What `ktme init` creates:
+- **Documentation structure** - `docs/` directory with README, architecture, API docs, and changelog
+- **Knowledge graph** - Service entry in SQLite database for tracking features and documentation
+- **Subdirectories** - `docs/api/`, `docs/guides/`, `docs/examples/` for organized documentation
+
+### 2. Git Integration
 
 Extract changes from various sources:
 - Staged changes (`--staged`)
@@ -87,7 +117,7 @@ Extract changes from various sources:
 - Commit ranges (`--range main..feature`)
 - Pull/Merge requests (`--pr 123`)
 
-### 2. Documentation Generation
+### 3. Documentation Generation
 
 Generate documentation with templates:
 ```bash
@@ -101,7 +131,12 @@ ktme generate --service api --type changelog
 ktme generate --service api --output docs/changelog.md
 ```
 
-### 3. Smart Updates
+The `generate` command automatically:
+- Initializes the knowledge graph if not already done
+- Creates feature entries for significant code changes
+- Tracks documentation history and relationships
+
+### 4. Smart Updates
 
 Update existing documentation intelligently:
 ```bash
@@ -112,7 +147,7 @@ ktme update --service api --section "Breaking Changes"
 ktme update --service api --staged
 ```
 
-### 4. MCP Server
+### 5. MCP Server
 
 Run as MCP server for AI agents:
 ```bash

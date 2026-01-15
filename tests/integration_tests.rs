@@ -12,6 +12,111 @@ fn test_cli_help() {
 }
 
 #[test]
+fn test_init_command() -> Result<(), Box<dyn std::error::Error>> {
+    let temp_dir = TempDir::new()?;
+    
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("ktme").unwrap();
+    cmd.args(&[
+        "init",
+        "--path",
+        temp_dir.path().to_str().unwrap(),
+        "--service",
+        "test-init-service",
+    ]);
+
+    cmd.assert().success();
+
+    // Check that docs directory was created
+    let docs_dir = temp_dir.path().join("docs");
+    assert!(docs_dir.exists());
+    
+    // Check that subdirectories were created
+    assert!(docs_dir.join("api").exists());
+    assert!(docs_dir.join("guides").exists());
+    assert!(docs_dir.join("examples").exists());
+    
+    // Check that documentation files were created
+    assert!(docs_dir.join("README.md").exists());
+    assert!(docs_dir.join("architecture.md").exists());
+    assert!(docs_dir.join("api.md").exists());
+    assert!(docs_dir.join("changelog.md").exists());
+    
+    // Verify content of README
+    let readme_content = fs::read_to_string(docs_dir.join("README.md"))?;
+    assert!(readme_content.contains("test-init-service"));
+    assert!(readme_content.contains("Documentation"));
+    
+    Ok(())
+}
+
+#[test]
+fn test_init_command_idempotent() -> Result<(), Box<dyn std::error::Error>> {
+    let temp_dir = TempDir::new()?;
+    
+    // Run init once
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("ktme").unwrap();
+    cmd.args(&[
+        "init",
+        "--path",
+        temp_dir.path().to_str().unwrap(),
+        "--service",
+        "test-service",
+    ]);
+    cmd.assert().success();
+
+    // Run init again - should warn about existing docs
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("ktme").unwrap();
+    cmd.args(&[
+        "init",
+        "--path",
+        temp_dir.path().to_str().unwrap(),
+        "--service",
+        "test-service",
+    ]);
+    
+    let output = cmd.output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("already exists") || output.status.success());
+    
+    Ok(())
+}
+
+#[test]
+fn test_init_with_force() -> Result<(), Box<dyn std::error::Error>> {
+    let temp_dir = TempDir::new()?;
+    
+    // Run init once
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("ktme").unwrap();
+    cmd.args(&[
+        "init",
+        "--path",
+        temp_dir.path().to_str().unwrap(),
+        "--service",
+        "test-service",
+    ]);
+    cmd.assert().success();
+
+    // Run init again with force
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("ktme").unwrap();
+    cmd.args(&[
+        "init",
+        "--path",
+        temp_dir.path().to_str().unwrap(),
+        "--service",
+        "test-service",
+        "--force",
+    ]);
+    cmd.assert().success();
+    
+    Ok(())
+}
+
+#[test]
 fn test_extract_command() {
     #[allow(deprecated)]
     let mut cmd = Command::cargo_bin("ktme").unwrap();
@@ -54,8 +159,8 @@ fn test_generate_command_without_ai_key() {
     let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&["generate", "--commit", "HEAD", "--service", "test-service"]);
 
-    // Should fail without AI API key
-    cmd.assert().failure();
+    // Should now succeed with mock AI provider (auto-initialized)
+    cmd.assert().success();
 }
 
 #[test]
@@ -90,8 +195,8 @@ fn test_generate_command_with_input_file() -> Result<(), Box<dyn std::error::Err
         "test-service",
     ]);
 
-    // Should still fail due to no AI key, but after processing the input
-    cmd.assert().failure();
+    // Should now succeed with mock AI provider (auto-initialized)
+    cmd.assert().success();
 
     Ok(())
 }
@@ -115,7 +220,7 @@ fn test_extract_and_generate_pipeline() -> Result<(), Box<dyn std::error::Error>
     cmd.assert().success();
     assert!(diff_path.exists());
 
-    // Then try to generate (will fail without AI key, but pipeline works)
+    // Then generate documentation (now succeeds with mock AI provider)
     #[allow(deprecated)]
     let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&[
@@ -124,11 +229,11 @@ fn test_extract_and_generate_pipeline() -> Result<(), Box<dyn std::error::Error>
         diff_path.to_str().unwrap(),
         "--service",
         "test-service",
-        "--doc-type",
+        "--type",
         "changelog",
     ]);
 
-    cmd.assert().failure(); // Expected without AI key
+    cmd.assert().success(); // Now succeeds with auto-initialization and mock provider
 
     Ok(())
 }

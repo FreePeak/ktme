@@ -31,8 +31,27 @@ impl ServiceRepository {
         )
         .map_err(|e| KtmeError::Storage(format!("Failed to create service: {}", e)))?;
 
-        self.get_by_name(name)?
-            .ok_or_else(|| KtmeError::Storage("Failed to retrieve created service".into()))
+        // Query the created service in the same transaction
+        let result = conn.query_row(
+            "SELECT id, name, path, description, created_at, updated_at
+             FROM services WHERE name = ?1",
+            params![name],
+            |row| {
+                Ok(Service {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    path: row.get(2)?,
+                    description: row.get(3)?,
+                    created_at: row.get(4)?,
+                    updated_at: row.get(5)?,
+                })
+            },
+        );
+
+        match result {
+            Ok(service) => Ok(service),
+            Err(e) => Err(KtmeError::Storage(format!("Failed to retrieve created service: {}", e))),
+        }
     }
 
     pub fn get_by_id(&self, id: i64) -> Result<Option<Service>> {
@@ -765,8 +784,50 @@ impl FeatureRepository {
         )
         .map_err(|e| KtmeError::Storage(format!("Failed to create feature: {}", e)))?;
 
-        self.get_by_id(id)?
-            .ok_or_else(|| KtmeError::Storage("Failed to retrieve created feature".into()))
+        // Query the created feature in the same transaction
+        let result = conn.query_row(
+            "SELECT id, service_id, name, description, feature_type, tags, metadata, relevance_score, created_at, updated_at
+             FROM features WHERE id = ?1",
+            params![id],
+            |row| {
+                let tags_json: String = row.get(5)?;
+                let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
+                let metadata_json: String = row.get(6)?;
+                let metadata: serde_json::Value = serde_json::from_str(&metadata_json).unwrap_or_default();
+                let feature_type_str: String = row.get(4)?;
+                let feature_type = match feature_type_str.as_str() {
+                    "api" => FeatureType::Api,
+                    "ui" => FeatureType::Ui,
+                    "business_logic" => FeatureType::BusinessLogic,
+                    "config" => FeatureType::Config,
+                    "database" => FeatureType::Database,
+                    "security" => FeatureType::Security,
+                    "performance" => FeatureType::Performance,
+                    "testing" => FeatureType::Testing,
+                    "deployment" => FeatureType::Deployment,
+                    _ => FeatureType::Other,
+                };
+
+                Ok(Feature {
+                    id: row.get(0)?,
+                    service_id: row.get(1)?,
+                    name: row.get(2)?,
+                    description: row.get(3)?,
+                    feature_type,
+                    tags,
+                    metadata,
+                    relevance_score: row.get(7)?,
+                    embedding: None,  // Not loading BLOB for now
+                    created_at: row.get(8)?,
+                    updated_at: row.get(9)?,
+                })
+            },
+        );
+
+        match result {
+            Ok(feature) => Ok(feature),
+            Err(e) => Err(KtmeError::Storage(format!("Failed to retrieve created feature: {}", e))),
+        }
     }
 
     pub fn get_by_id(&self, id: &str) -> Result<Option<Feature>> {
