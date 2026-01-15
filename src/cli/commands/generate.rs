@@ -8,6 +8,10 @@ use std::fs;
 use std::path::Path;
 use uuid::Uuid;
 
+// Constants for feature tracking
+const MIN_CHANGES_FOR_FEATURE: u32 = 5;
+const FEATURE_DESCRIPTION_MAX_LENGTH: usize = 200;
+
 #[allow(clippy::too_many_arguments)]
 pub async fn execute(
     commit: Option<String>,
@@ -220,7 +224,7 @@ async fn update_knowledge_graph(
         let feature_type = determine_feature_type(&file.path);
         
         // Create a feature entry for significant changes
-        if file.additions > 5 || file.deletions > 5 {
+        if file.additions > MIN_CHANGES_FOR_FEATURE || file.deletions > MIN_CHANGES_FOR_FEATURE {
             let feature_name = extract_feature_name(&file.path, &diff.message);
             let feature_id = Uuid::new_v4().to_string();
             
@@ -240,11 +244,16 @@ async fn update_knowledge_graph(
             });
             
             // Try to create feature (ignore if already exists)
+            let description = format!(
+                "Documentation: {}", 
+                documentation.chars().take(FEATURE_DESCRIPTION_MAX_LENGTH).collect::<String>()
+            );
+            
             match feature_repo.create(
                 &feature_id,
                 service_entry.id,
                 &feature_name,
-                Some(&format!("Documentation: {}", documentation.chars().take(200).collect::<String>())),
+                Some(&description),
                 feature_type,
                 tags,
                 metadata,
