@@ -159,8 +159,8 @@ fn test_generate_command_without_ai_key() {
     let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&["generate", "--commit", "HEAD", "--service", "test-service"]);
 
-    // Should fail without AI API key
-    cmd.assert().failure();
+    // Should now succeed with mock AI provider (auto-initialized)
+    cmd.assert().success();
 }
 
 #[test]
@@ -195,8 +195,8 @@ fn test_generate_command_with_input_file() -> Result<(), Box<dyn std::error::Err
         "test-service",
     ]);
 
-    // Should still fail due to no AI key, but after processing the input
-    cmd.assert().failure();
+    // Should now succeed with mock AI provider (auto-initialized)
+    cmd.assert().success();
 
     Ok(())
 }
@@ -220,7 +220,7 @@ fn test_extract_and_generate_pipeline() -> Result<(), Box<dyn std::error::Error>
     cmd.assert().success();
     assert!(diff_path.exists());
 
-    // Then try to generate (will fail without AI key, but pipeline works)
+    // Then generate documentation (now succeeds with mock AI provider)
     #[allow(deprecated)]
     let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&[
@@ -229,11 +229,11 @@ fn test_extract_and_generate_pipeline() -> Result<(), Box<dyn std::error::Error>
         diff_path.to_str().unwrap(),
         "--service",
         "test-service",
-        "--doc-type",
+        "--type",
         "changelog",
     ]);
 
-    cmd.assert().failure(); // Expected without AI key
+    cmd.assert().success(); // Now succeeds with auto-initialization and mock provider
 
     Ok(())
 }
