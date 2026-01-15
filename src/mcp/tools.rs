@@ -66,6 +66,9 @@ impl McpTools {
             format
         );
 
+        // Auto-initialize service if not present
+        Self::ensure_service_initialized(service)?;
+
         // Parse the changes
         let diff: crate::git::diff::ExtractedDiff =
             serde_json::from_str(changes).map_err(|_| {
@@ -83,6 +86,26 @@ impl McpTools {
                 Ok(Self::generate_basic_documentation(service, &diff, format))
             }
         }
+    }
+
+    fn ensure_service_initialized(service: &str) -> Result<()> {
+        use crate::storage::database::Database;
+        use crate::storage::repository::ServiceRepository;
+
+        let db = Database::new(None)?;
+        let service_repo = ServiceRepository::new(db);
+
+        // Check if service exists, create if not
+        if service_repo.get_by_name(service)?.is_none() {
+            tracing::info!("Auto-initializing service: {}", service);
+            service_repo.create(
+                service,
+                None,
+                Some(&format!("Auto-initialized via MCP")),
+            )?;
+        }
+
+        Ok(())
     }
 
     fn generate_ai_documentation(

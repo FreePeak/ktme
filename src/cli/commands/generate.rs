@@ -1,8 +1,12 @@
 use crate::ai::{prompts::PromptTemplates, AIClient};
-use crate::error::Result;
+use crate::error::{KtmeError, Result};
 use crate::git::diff::{DiffExtractor, ExtractedDiff};
+use crate::storage::database::Database;
+use crate::storage::repository::{FeatureRepository, ServiceRepository};
+use crate::storage::models::FeatureType;
 use std::fs;
 use std::path::Path;
+use uuid::Uuid;
 
 #[allow(clippy::too_many_arguments)]
 pub async fn execute(
@@ -17,6 +21,9 @@ pub async fn execute(
     template: Option<String>,
 ) -> Result<()> {
     tracing::info!("Generating documentation for service: {}", service);
+
+    // Auto-initialize if not already done
+    check_and_initialize(&service).await?;
 
     // Get the diff data
     let diff = if let Some(input_file) = input {
@@ -85,6 +92,10 @@ pub async fn execute(
     }
 
     tracing::info!("Documentation generated successfully!");
+    
+    // Update knowledge graph with generated documentation
+    update_knowledge_graph(&service, &diff, &documentation, doc_type).await?;
+    
     Ok(())
 }
 
@@ -165,3 +176,137 @@ fn write_json_output(json: &serde_json::Value, output: Option<&str>) -> Result<(
     }
     Ok(())
 }
+
+/// Check if service is initialized and auto-initialize if needed
+async fn check_and_initialize(service: &str) -> Result<()> {
+    let db = Database::new(None)?;
+    let service_repo = ServiceRepository::new(db);
+
+    // Check if service exists
+    if service_repo.get_by_name(service)?.is_none() {
+        tracing::info!("Service '{}' not found in knowledge graph, auto-initializing...", service);
+        
+        // Create service entry
+        service_repo.create(
+            service,
+            None, // No path specified
+            Some(&format!("Auto-initialized for documentation generation")),
+        )?;
+        
+        println!("ℹ️  Initialized knowledge graph for service '{}'", service);
+    }
+
+    Ok(())
+}
+
+/// Update knowledge graph with generated documentation
+async fn update_knowledge_graph(
+    service: &str,
+    diff: &ExtractedDiff,
+    documentation: &str,
+    doc_type: &str,
+) -> Result<()> {
+    let db = Database::new(None)?;
+    let service_repo = ServiceRepository::new(db.clone());
+    let feature_repo = FeatureRepository::new(db);
+
+    // Get service ID
+    let service_entry = service_repo.get_by_name(service)?
+        .ok_or_else(|| KtmeError::Storage(format!("Service '{}' not found", service)))?;
+
+    // Extract features from the diff and create feature entries
+    for file in &diff.files {
+        // Determine feature type based on file path
+        let feature_type = determine_feature_type(&file.path);
+        
+        // Create a feature entry for significant changes
+        if file.additions > 5 || file.deletions > 5 {
+            let feature_name = extract_feature_name(&file.path, &diff.message);
+            let feature_id = Uuid::new_v4().to_string();
+            
+            // Create feature
+            let tags = vec![
+                doc_type.to_string(),
+                file.status.clone(),
+            ];
+            
+            let metadata = serde_json::json!({
+                "file_path": file.path,
+                "additions": file.additions,
+                "deletions": file.deletions,
+                "commit": diff.identifier,
+                "author": diff.author,
+                "timestamp": diff.timestamp,
+            });
+            
+            // Try to create feature (ignore if already exists)
+            match feature_repo.create(
+                &feature_id,
+                service_entry.id,
+                &feature_name,
+                Some(&format!("Documentation: {}", documentation.chars().take(200).collect::<String>())),
+                feature_type,
+                tags,
+                metadata,
+            ) {
+                Ok(_) => {
+                    tracing::info!("Created feature '{}' in knowledge graph", feature_name);
+                }
+                Err(e) => {
+                    tracing::debug!("Feature creation skipped: {}", e);
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Determine feature type from file path
+fn determine_feature_type(path: &str) -> FeatureType {
+    let path_lower = path.to_lowercase();
+    
+    if path_lower.contains("api") || path_lower.contains("endpoint") || path_lower.contains("route") {
+        FeatureType::Api
+    } else if path_lower.contains("ui") || path_lower.contains("component") || path_lower.contains("view") {
+        FeatureType::Ui
+    } else if path_lower.contains("test") {
+        FeatureType::Testing
+    } else if path_lower.contains("config") || path_lower.ends_with(".toml") || path_lower.ends_with(".yaml") || path_lower.ends_with(".yml") {
+        FeatureType::Config
+    } else if path_lower.contains("db") || path_lower.contains("database") || path_lower.contains("migration") {
+        FeatureType::Database
+    } else if path_lower.contains("security") || path_lower.contains("auth") {
+        FeatureType::Security
+    } else if path_lower.contains("deploy") || path_lower.contains("docker") || path_lower.contains("ci") {
+        FeatureType::Deployment
+    } else if path_lower.contains("performance") || path_lower.contains("optimize") {
+        FeatureType::Performance
+    } else {
+        FeatureType::BusinessLogic
+    }
+}
+
+/// Extract a meaningful feature name from file path and commit message
+fn extract_feature_name(path: &str, commit_message: &str) -> String {
+    // Try to extract from commit message first
+    let message_words: Vec<&str> = commit_message.split_whitespace().collect();
+    if message_words.len() > 2 {
+        let feature_from_message = message_words.iter()
+            .take(5)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(" ");
+        if feature_from_message.len() > 10 {
+            return feature_from_message;
+        }
+    }
+    
+    // Fallback to file path
+    Path::new(path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .map(|s| s.replace('_', " ").replace('-', " "))
+        .unwrap_or_else(|| "unknown feature".to_string())
+}
+
