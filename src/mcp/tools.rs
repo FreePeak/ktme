@@ -79,7 +79,14 @@ impl McpTools {
         match AIClient::new() {
             Ok(ai_client) => {
                 tracing::info!("Using AI client for documentation generation");
-                Self::generate_ai_documentation(&ai_client, service, &diff, format)
+                // Create async runtime for AI call
+                let rt = tokio::runtime::Runtime::new().map_err(|e| {
+                    crate::error::KtmeError::Storage(format!("Failed to create runtime: {}", e))
+                })?;
+
+                rt.block_on(Self::generate_ai_documentation_async(
+                    &ai_client, service, &diff, format,
+                ))
             }
             Err(_) => {
                 tracing::warn!("AI client not available, falling back to basic documentation");
@@ -108,13 +115,13 @@ impl McpTools {
         Ok(())
     }
 
-    fn generate_ai_documentation(
-        _ai_client: &AIClient,
+    async fn generate_ai_documentation_async(
+        ai_client: &AIClient,
         service: &str,
         diff: &crate::git::diff::ExtractedDiff,
         format: Option<&str>,
     ) -> Result<String> {
-        let _prompt = format!(
+        let prompt = format!(
             "Generate comprehensive documentation for the service '{}' based on the following code changes:\n\n\
             Commit Message: {}\n\
             Author: {}\n\
@@ -145,8 +152,16 @@ impl McpTools {
             format.unwrap_or("markdown")
         );
 
-        // For now, fall back to basic documentation since AI is async
-        Ok(Self::generate_basic_documentation(service, diff, format))
+        match ai_client.generate_documentation(&prompt).await {
+            Ok(documentation) => Ok(documentation),
+            Err(e) => {
+                tracing::warn!(
+                    "AI generation failed: {}, falling back to basic documentation",
+                    e
+                );
+                Ok(Self::generate_basic_documentation(service, diff, format))
+            }
+        }
     }
 
     fn generate_basic_documentation(
