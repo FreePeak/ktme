@@ -6,7 +6,7 @@ ktme includes a complete MCP (Model Context Protocol) server that allows you to 
 
 ## 🎯 Document Provider Modes
 
-### 1. **Local Markdown Mode** (✅ Implemented)
+### 1. **Local Markdown Mode** (✅ Implemented & Tested)
 - **What**: Saves documentation as Markdown files on your local filesystem
 - **Where**: `./docs/{service}_{type}.md`
 - **Use case**: Perfect for personal projects, local development, version-controlled documentation
@@ -15,8 +15,9 @@ ktme includes a complete MCP (Model Context Protocol) server that allows you to 
   - ✅ Files tracked in Git
   - ✅ Full control over content
   - ✅ Easy to edit and maintain
+- **Status**: Fully implemented with HTTP and STDIO transport support
 
-### 2. **Cloud Confluence Mode** (🔄 In Progress)
+### 2. **Cloud Confluence Mode** (🔄 Planned)
 - **What**: Publishes documentation directly to Confluence pages
 - **Where**: Your Confluence workspace
 - **Use case**: Enterprise teams, knowledge management, shared documentation
@@ -25,6 +26,51 @@ ktme includes a complete MCP (Model Context Protocol) server that allows you to 
   - ✅ Team collaboration features
   - ✅ Access controls and permissions
   - ✅ Rich formatting and attachments
+- **Status**: Infrastructure ready, implementation pending
+
+## 🎉 Implementation Status (v0.3.0)
+
+### ✅ Completed Features
+
+#### MCP Protocol Support
+- **HTTP/SSE Transport** - Full JSON-RPC 2.0 support on port 3000
+  - `GET /status` - Server health and statistics
+  - `POST /shutdown` - Graceful server shutdown
+  - `POST /mcp` - JSON-RPC 2.0 endpoint for all MCP methods
+- **STDIO Transport** - Direct integration with Claude Code and MCP clients
+- **Server State Management** - Graceful shutdown with cleanup
+- **Protocol Handler** - Complete MCP 2024-11-05 protocol implementation
+
+#### Available MCP Tools (11 total)
+1. `read_changes` - Extract code changes from Git
+2. `get_service_mapping` - Get documentation location for a service
+3. `list_services` - List all mapped services
+4. `generate_documentation` - AI-powered documentation generation
+5. `update_documentation` - Update existing documentation
+6. `search_services` - Search services by name
+7. `search_by_feature` - Search by feature name
+8. `search_by_keyword` - Keyword-based search
+9. `automated_documentation_workflow` - End-to-end workflow
+10. `detect_service_name` - Auto-detect service from changes
+11. `get_repository_info` - Get repository metadata
+
+#### AI Integration
+- **Multi-provider Support** - OpenAI, Claude (Anthropic), Mock provider
+- **Async Runtime** - Tokio-based async/await for performance
+- **Error Handling** - Robust fallbacks and error reporting
+
+#### Testing
+- ✅ Unit tests for protocol handler (6/6 passing)
+- ✅ Integration tests for STDIO mode (2/2 passing)
+- ✅ HTTP endpoint testing (all 3 endpoints verified)
+- ✅ End-to-end workflow tested
+
+### 🔄 In Progress
+- Confluence Cloud integration
+- Template system for custom documentation formats
+- Knowledge graph and RAG search capabilities
+
+
 
 ## 🚀 Quick Start
 

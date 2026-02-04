@@ -3,6 +3,7 @@ use crate::mcp::tools::McpTools;
 use serde_json::{json, Value};
 
 /// Shared MCP protocol handler for JSON-RPC 2.0 message processing
+#[derive(Clone)]
 pub struct McpProtocolHandler {
     server_name: String,
     server_version: String,

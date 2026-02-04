@@ -3,6 +3,8 @@ use crate::error::Result;
 use crate::mcp::protocol::McpProtocolHandler;
 use serde_json::Value;
 use std::io::{self, BufRead, BufReader, Write};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[derive(Debug, Clone)]
 pub struct ServerConfig {
@@ -21,10 +23,33 @@ impl Default for ServerConfig {
     }
 }
 
+#[derive(Clone)]
+pub struct ServerState {
+    pub running: Arc<RwLock<bool>>,
+}
+
+impl ServerState {
+    pub fn new() -> Self {
+        Self {
+            running: Arc::new(RwLock::new(true)),
+        }
+    }
+
+    pub async fn is_running(&self) -> bool {
+        *self.running.read().await
+    }
+
+    pub async fn shutdown(&self) {
+        let mut running = self.running.write().await;
+        *running = false;
+    }
+}
+
 pub struct McpServer {
     config: ServerConfig,
     protocol_handler: McpProtocolHandler,
     ai_client: Option<AIClient>,
+    state: ServerState,
 }
 
 impl McpServer {
@@ -37,6 +62,7 @@ impl McpServer {
             config,
             protocol_handler,
             ai_client: None,
+            state: ServerState::new(),
         };
 
         // Try to initialize AI client
@@ -56,6 +82,10 @@ impl McpServer {
         }
 
         Ok(server)
+    }
+
+    pub fn state(&self) -> ServerState {
+        self.state.clone()
     }
 
     pub async fn start(&self) -> Result<()> {
@@ -126,41 +156,174 @@ impl McpServer {
     }
 
     async fn run_sse_server(&self, port: u16) -> Result<()> {
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
         use tokio::net::TcpListener;
 
         let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).await?;
-        tracing::info!("SSE server listening on port {}", port);
+        tracing::info!("HTTP/SSE server listening on port {}", port);
+
+        let state = self.state.clone();
+        let protocol_handler = self.protocol_handler.clone();
 
         loop {
-            let (socket, _) = listener.accept().await?;
-            let (mut reader, mut writer) = socket.into_split();
+            // Check if server should shutdown
+            if !state.is_running().await {
+                tracing::info!("Shutting down HTTP server");
+                break;
+            }
 
-            // Handle SSE connection
-            tokio::spawn(async move {
-                // Send SSE headers
-                let _ = writer.write_all(b"HTTP/1.1 200 OK\r\n").await;
-                let _ = writer
-                    .write_all(b"Content-Type: text/event-stream\r\n")
-                    .await;
-                let _ = writer.write_all(b"Cache-Control: no-cache\r\n").await;
-                let _ = writer.write_all(b"Connection: close\r\n").await;
-                let _ = writer.write_all(b"\r\n").await;
+            tokio::select! {
+                accept_result = listener.accept() => {
+                    match accept_result {
+                        Ok((socket, addr)) => {
+                            tracing::debug!("New connection from: {}", addr);
+                            let state_clone = state.clone();
+                            let handler_clone = protocol_handler.clone();
 
-                let mut buffer = [0; 1024];
-                loop {
-                    match reader.read(&mut buffer).await {
-                        Ok(0) => break,
-                        Ok(n) => {
-                            let _request = String::from_utf8_lossy(&buffer[..n]);
-                            // Handle MCP request
-                            // TODO: Implement proper MCP protocol handling for SSE
+                            tokio::spawn(async move {
+                                if let Err(e) = Self::handle_http_connection(socket, state_clone, handler_clone).await {
+                                    tracing::error!("Error handling HTTP connection: {}", e);
+                                }
+                            });
                         }
-                        Err(_) => break,
+                        Err(e) => {
+                            tracing::error!("Error accepting connection: {}", e);
+                        }
                     }
                 }
-            });
+                _ = tokio::time::sleep(tokio::time::Duration::from_millis(100)) => {
+                    // Periodic check for shutdown
+                    continue;
+                }
+            }
         }
+
+        Ok(())
+    }
+
+    async fn handle_http_connection(
+        socket: tokio::net::TcpStream,
+        state: ServerState,
+        protocol_handler: McpProtocolHandler,
+    ) -> Result<()> {
+        use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+
+        let (reader, mut writer) = socket.into_split();
+        let mut reader = BufReader::new(reader);
+
+        // Read HTTP request line
+        let mut request_line = String::new();
+        reader.read_line(&mut request_line).await?;
+
+        let parts: Vec<&str> = request_line.split_whitespace().collect();
+        if parts.len() < 2 {
+            return Ok(());
+        }
+
+        let method = parts[0];
+        let path = parts[1];
+
+        tracing::debug!("HTTP Request: {} {}", method, path);
+
+        // Read headers and extract Content-Length
+        let mut content_length: usize = 0;
+        loop {
+            let mut line = String::new();
+            reader.read_line(&mut line).await?;
+            if line == "\r\n" || line == "\n" || line.is_empty() {
+                break;
+            }
+
+            // Parse Content-Length header
+            if line.to_lowercase().starts_with("content-length:") {
+                if let Some(len_str) = line.split(':').nth(1) {
+                    content_length = len_str.trim().parse().unwrap_or(0);
+                }
+            }
+        }
+
+        // Handle different endpoints
+        match (method, path) {
+            ("GET", "/status") => {
+                let tools_count = McpProtocolHandler::get_tools_list().len();
+                let status_json = serde_json::json!({
+                    "status": "running",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "server_name": "ktme-mcp-server",
+                    "tools_count": tools_count,
+                    "transport": "http"
+                });
+
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{}",
+                    status_json.to_string()
+                );
+                writer.write_all(response.as_bytes()).await?;
+                writer.flush().await?;
+            }
+            ("POST", "/shutdown") => {
+                state.shutdown().await;
+
+                let response_json = serde_json::json!({
+                    "status": "shutdown",
+                    "message": "Server shutting down gracefully"
+                });
+
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{}",
+                    response_json.to_string()
+                );
+                writer.write_all(response.as_bytes()).await?;
+                writer.flush().await?;
+            }
+            ("POST", "/mcp") => {
+                // Handle MCP JSON-RPC request via POST
+                let body = if content_length > 0 {
+                    let mut buffer = vec![0u8; content_length];
+                    reader.read_exact(&mut buffer).await?;
+                    String::from_utf8_lossy(&buffer).to_string()
+                } else {
+                    String::new()
+                };
+
+                tracing::debug!("MCP Request body: {}", body);
+
+                match protocol_handler.handle_message(&body).await {
+                    Ok(Some(response)) => {
+                        let http_response = format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{}",
+                            response.to_string()
+                        );
+                        writer.write_all(http_response.as_bytes()).await?;
+                        writer.flush().await?;
+                    }
+                    Ok(None) => {
+                        // Notification - 204 No Content
+                        let response = "HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n";
+                        writer.write_all(response.as_bytes()).await?;
+                        writer.flush().await?;
+                    }
+                    Err(e) => {
+                        let error_json = serde_json::json!({
+                            "error": e.to_string()
+                        });
+                        let response = format!(
+                            "HTTP/1.1 500 Internal Server Error\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{}",
+                            error_json.to_string()
+                        );
+                        writer.write_all(response.as_bytes()).await?;
+                        writer.flush().await?;
+                    }
+                }
+            }
+            _ => {
+                // 404 Not Found
+                let response = "HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n";
+                writer.write_all(response.as_bytes()).await?;
+                writer.flush().await?;
+            }
+        }
+
+        Ok(())
     }
 
     async fn handle_message(&self, message: &str, writer: &mut impl Write) -> Result<bool> {
