@@ -357,6 +357,58 @@ impl McpProtocolHandler {
                     "properties": {}
                 }
             }),
+            json!({
+                "name": "scan_documentation",
+                "description": "Scan documentation directory and return statistics (files, sections, code blocks)",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Project directory path (defaults to current directory)"
+                        }
+                    }
+                }
+            }),
+            json!({
+                "name": "validate_documentation",
+                "description": "Validate documentation for common issues (missing headers, broken links)",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Project directory path (defaults to current directory)"
+                        }
+                    }
+                }
+            }),
+            json!({
+                "name": "detect_tech_stack",
+                "description": "Detect technology stack for a project (Rust, Node.js, Go, Java)",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Project directory path (defaults to current directory)"
+                        }
+                    }
+                }
+            }),
+            json!({
+                "name": "find_documentation_todos",
+                "description": "Find TODO markers in documentation files",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Project directory path (defaults to current directory)"
+                        }
+                    }
+                }
+            }),
         ]
     }
 
@@ -450,6 +502,22 @@ impl McpProtocolHandler {
             }
             "detect_service_name" => McpTools::detect_service_name(),
             "get_repository_info" => McpTools::get_repository_info(),
+            "scan_documentation" => {
+                let path = arguments.get("path").and_then(|p| p.as_str());
+                McpTools::scan_documentation(path)
+            }
+            "validate_documentation" => {
+                let path = arguments.get("path").and_then(|p| p.as_str());
+                McpTools::validate_documentation(path)
+            }
+            "detect_tech_stack" => {
+                let path = arguments.get("path").and_then(|p| p.as_str());
+                McpTools::detect_tech_stack(path)
+            }
+            "find_documentation_todos" => {
+                let path = arguments.get("path").and_then(|p| p.as_str());
+                McpTools::find_documentation_todos(path)
+            }
             _ => Err(crate::error::KtmeError::InvalidInput(format!(
                 "Unknown tool: {}",
                 tool_name

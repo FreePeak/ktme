@@ -396,4 +396,224 @@ impl McpTools {
 
         Ok(result)
     }
+
+    /// Scan documentation and return statistics
+    pub fn scan_documentation(path: Option<&str>) -> Result<String> {
+        tracing::info!("MCP Tool: scan_documentation(path={:?})", path);
+
+        let project_path = path.unwrap_or(".");
+        let project_dir = std::path::PathBuf::from(project_path);
+        let docs_dir = project_dir.join("docs");
+
+        if !docs_dir.exists() {
+            return Ok(format!("No documentation directory found at: {}", docs_dir.display()));
+        }
+
+        let mut total_files = 0;
+        let mut total_sections = 0;
+        let mut total_code_blocks = 0;
+        let mut file_details = Vec::new();
+
+        if let Ok(entries) = std::fs::read_dir(&docs_dir) {
+            for entry in entries {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_file() && path.extension().map(|e| e == "md").unwrap_or(false) {
+                    total_files += 1;
+                    if let Ok(content) = std::fs::read_to_string(&path) {
+                        let sections = content.lines().filter(|l| l.starts_with("## ")).count();
+                        let code_blocks = content.matches("```").count() / 2;
+                        total_sections += sections;
+                        total_code_blocks += code_blocks;
+                        file_details.push(format!(
+                            "- **{}**: {} sections, {} code blocks",
+                            path.file_name().unwrap().to_string_lossy(),
+                            sections,
+                            code_blocks
+                        ));
+                    }
+                }
+            }
+        }
+
+        let mut result = format!("# Documentation Scan Report\n\n**Path:** {}\n\n## Summary\n", project_path);
+        result.push_str(&format!("- Total markdown files: {}\n", total_files));
+        result.push_str(&format!("- Total sections: {}\n", total_sections));
+        result.push_str(&format!("- Total code blocks: {}\n\n", total_code_blocks));
+        result.push_str("## Files\n");
+        for detail in file_details {
+            result.push_str(&format!("{}\n", detail));
+        }
+
+        Ok(result)
+    }
+
+    /// Validate documentation for common issues
+    pub fn validate_documentation(path: Option<&str>) -> Result<String> {
+        tracing::info!("MCP Tool: validate_documentation(path={:?})", path);
+
+        let project_path = path.unwrap_or(".");
+        let project_dir = std::path::PathBuf::from(project_path);
+        let docs_dir = project_dir.join("docs");
+
+        if !docs_dir.exists() {
+            return Ok(format!("No documentation directory found at: {}", docs_dir.display()));
+        }
+
+        let mut validation_warnings = Vec::new();
+        let mut validation_errors = Vec::new();
+
+        if let Ok(entries) = std::fs::read_dir(&docs_dir) {
+            for entry in entries {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_file() && path.extension().map(|e| e == "md").unwrap_or(false) {
+                    if let Ok(content) = std::fs::read_to_string(&path) {
+                        let filename = path.file_name().unwrap().to_string_lossy();
+
+                        if !content.starts_with("# ") {
+                            validation_warnings.push(format!("{}: Missing title header", filename));
+                        }
+
+                        if !content.contains("## ") {
+                            validation_warnings.push(format!("{}: No sections found", filename));
+                        }
+
+                        let open_brackets = content.matches("[").count();
+                        let close_brackets = content.matches("]").count();
+                        if open_brackets != close_brackets {
+                            validation_errors.push(format!("{}: Potentially broken links detected", filename));
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut result = format!("# Documentation Validation Report\n\n**Path:** {}\n\n", project_path);
+
+        if validation_warnings.is_empty() && validation_errors.is_empty() {
+            result.push_str("## Result\nAll checks passed!\n");
+        } else {
+            if !validation_warnings.is_empty() {
+                result.push_str("## Warnings\n");
+                for warning in &validation_warnings {
+                    result.push_str(&format!("- {}\n", warning));
+                }
+            }
+            if !validation_errors.is_empty() {
+                result.push_str("\n## Errors\n");
+                for error in &validation_errors {
+                    result.push_str(&format!("- {}\n", error));
+                }
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// Detect technology stack for a project
+    pub fn detect_tech_stack(path: Option<&str>) -> Result<String> {
+        tracing::info!("MCP Tool: detect_tech_stack(path={:?})", path);
+
+        let project_path = path.unwrap_or(".");
+        let project_dir = std::path::PathBuf::from(project_path);
+
+        let mut result = format!("# Technology Stack Report\n\n**Path:** {}\n\n", project_path);
+        result.push_str("## Detected Technologies\n\n");
+
+        let cargo_toml = project_dir.join("Cargo.toml");
+        if cargo_toml.exists() {
+            result.push_str("### Rust Project\n");
+            if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
+                if content.contains("tokio") {
+                    result.push_str("- Async runtime: **tokio**\n");
+                }
+                if content.contains("serde") {
+                    result.push_str("- Serialization: **serde**\n");
+                }
+                if content.contains("reqwest") {
+                    result.push_str("- HTTP client: **reqwest**\n");
+                }
+                if content.contains("tracing") {
+                    result.push_str("- Logging: **tracing**\n");
+                }
+                if content.contains("clap") {
+                    result.push_str("- CLI parsing: **clap**\n");
+                }
+                if content.contains("rusqlite") {
+                    result.push_str("- Database: **rusqlite**\n");
+                }
+            }
+            result.push_str("\n");
+        }
+
+        let package_json = project_dir.join("package.json");
+        if package_json.exists() {
+            result.push_str("### Node.js Project\n");
+            result.push_str("- Package manager detected\n\n");
+        }
+
+        let go_mod = project_dir.join("go.mod");
+        if go_mod.exists() {
+            result.push_str("### Go Project\n");
+            result.push_str("- Go modules detected\n\n");
+        }
+
+        let pom_xml = project_dir.join("pom.xml");
+        if pom_xml.exists() {
+            result.push_str("### Java Project\n");
+            result.push_str("- Maven detected\n\n");
+        }
+
+        Ok(result)
+    }
+
+    /// Find TODO markers in documentation
+    pub fn find_documentation_todos(path: Option<&str>) -> Result<String> {
+        tracing::info!("MCP Tool: find_documentation_todos(path={:?})", path);
+
+        let project_path = path.unwrap_or(".");
+        let project_dir = std::path::PathBuf::from(project_path);
+        let docs_dir = project_dir.join("docs");
+
+        if !docs_dir.exists() {
+            return Ok(format!("No documentation directory found at: {}", docs_dir.display()));
+        }
+
+        let mut todos = Vec::new();
+
+        if let Ok(entries) = std::fs::read_dir(&docs_dir) {
+            for entry in entries {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_file() && path.extension().map(|e| e == "md").unwrap_or(false) {
+                    if let Ok(content) = std::fs::read_to_string(&path) {
+                        for (line_num, line) in content.lines().enumerate() {
+                            if line.contains("TODO:") {
+                                todos.push(format!(
+                                    "- **{}** (line {}): {}",
+                                    path.file_name().unwrap().to_string_lossy(),
+                                    line_num + 1,
+                                    line.trim()
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut result = format!("# Documentation TODOs\n\n**Path:** {}\n\n", project_path);
+
+        if todos.is_empty() {
+            result.push_str("No TODO markers found in documentation.\n");
+        } else {
+            result.push_str(&format!("Found {} TODO marker(s):\n\n", todos.len()));
+            for todo in todos {
+                result.push_str(&format!("{}\n", todo));
+            }
+        }
+
+        Ok(result)
+    }
 }
