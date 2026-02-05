@@ -13,3 +13,13 @@ pub mod service_detector;
 pub mod storage;
 
 pub use error::{KtmeError, Result};
+
+#[derive(Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum InitMode {
+    Fresh,
+    Scan,
+    Validate,
+    Enhance,
+    Sync,
+    Research,
+}

@@ -50,7 +50,10 @@ impl ServiceRepository {
 
         match result {
             Ok(service) => Ok(service),
-            Err(e) => Err(KtmeError::Storage(format!("Failed to retrieve created service: {}", e))),
+            Err(e) => Err(KtmeError::Storage(format!(
+                "Failed to retrieve created service: {}",
+                e
+            ))),
         }
     }
 
@@ -826,7 +829,10 @@ impl FeatureRepository {
 
         match result {
             Ok(feature) => Ok(feature),
-            Err(e) => Err(KtmeError::Storage(format!("Failed to retrieve created feature: {}", e))),
+            Err(e) => Err(KtmeError::Storage(format!(
+                "Failed to retrieve created feature: {}",
+                e
+            ))),
         }
     }
 

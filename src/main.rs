@@ -11,7 +11,12 @@ mod mcp;
 mod service_detector;
 mod storage;
 
+mod analysis;
+mod enhance;
+mod research;
+
 use error::Result;
+use ktme::InitMode;
 
 #[derive(Parser)]
 #[command(name = "ktme")]
@@ -138,6 +143,15 @@ enum Commands {
 
         #[arg(long, help = "Force re-initialization even if already initialized")]
         force: bool,
+
+        #[arg(long, value_enum, default_value = "fresh", help = "Init mode")]
+        mode: InitMode,
+
+        #[arg(long, help = "Preview changes without applying")]
+        dry_run: bool,
+
+        #[arg(long, help = "Save report to file")]
+        output: Option<String>,
     },
 }
 
@@ -354,8 +368,11 @@ async fn main() -> Result<()> {
             path,
             service,
             force,
+            mode,
+            dry_run,
+            output,
         } => {
-            cli::commands::init::execute(path, service, force).await?;
+            cli::commands::init::execute(path, service, force, mode, dry_run, output).await?;
         }
     }
 

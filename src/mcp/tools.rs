@@ -105,11 +105,7 @@ impl McpTools {
         // Check if service exists, create if not
         if service_repo.get_by_name(service)?.is_none() {
             tracing::info!("Auto-initializing service: {}", service);
-            service_repo.create(
-                service,
-                None,
-                Some(&format!("Auto-initialized via MCP")),
-            )?;
+            service_repo.create(service, None, Some(&format!("Auto-initialized via MCP")))?;
         }
 
         Ok(())

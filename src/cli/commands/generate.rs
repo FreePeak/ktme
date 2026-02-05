@@ -2,8 +2,8 @@ use crate::ai::{prompts::PromptTemplates, AIClient};
 use crate::error::{KtmeError, Result};
 use crate::git::diff::{DiffExtractor, ExtractedDiff};
 use crate::storage::database::Database;
-use crate::storage::repository::{FeatureRepository, ServiceRepository};
 use crate::storage::models::FeatureType;
+use crate::storage::repository::{FeatureRepository, ServiceRepository};
 use std::fs;
 use std::path::Path;
 use uuid::Uuid;
@@ -96,10 +96,10 @@ pub async fn execute(
     }
 
     tracing::info!("Documentation generated successfully!");
-    
+
     // Update knowledge graph with generated documentation
     update_knowledge_graph(&service, &diff, &documentation, doc_type).await?;
-    
+
     Ok(())
 }
 
@@ -188,15 +188,18 @@ async fn check_and_initialize(service: &str) -> Result<()> {
 
     // Check if service exists
     if service_repo.get_by_name(service)?.is_none() {
-        tracing::info!("Service '{}' not found in knowledge graph, auto-initializing...", service);
-        
+        tracing::info!(
+            "Service '{}' not found in knowledge graph, auto-initializing...",
+            service
+        );
+
         // Create service entry
         service_repo.create(
             service,
             None, // No path specified
             Some(&format!("Auto-initialized for documentation generation")),
         )?;
-        
+
         println!("ℹ️  Initialized knowledge graph for service '{}'", service);
     }
 
@@ -215,25 +218,23 @@ async fn update_knowledge_graph(
     let feature_repo = FeatureRepository::new(db);
 
     // Get service ID
-    let service_entry = service_repo.get_by_name(service)?
+    let service_entry = service_repo
+        .get_by_name(service)?
         .ok_or_else(|| KtmeError::Storage(format!("Service '{}' not found", service)))?;
 
     // Extract features from the diff and create feature entries
     for file in &diff.files {
         // Determine feature type based on file path
         let feature_type = determine_feature_type(&file.path);
-        
+
         // Create a feature entry for significant changes
         if file.additions > MIN_CHANGES_FOR_FEATURE || file.deletions > MIN_CHANGES_FOR_FEATURE {
             let feature_name = extract_feature_name(&file.path, &diff.message);
             let feature_id = Uuid::new_v4().to_string();
-            
+
             // Create feature
-            let tags = vec![
-                doc_type.to_string(),
-                file.status.clone(),
-            ];
-            
+            let tags = vec![doc_type.to_string(), file.status.clone()];
+
             let metadata = serde_json::json!({
                 "file_path": file.path,
                 "additions": file.additions,
@@ -242,13 +243,16 @@ async fn update_knowledge_graph(
                 "author": diff.author,
                 "timestamp": diff.timestamp,
             });
-            
+
             // Try to create feature (ignore if already exists)
             let description = format!(
-                "Documentation: {}", 
-                documentation.chars().take(FEATURE_DESCRIPTION_MAX_LENGTH).collect::<String>()
+                "Documentation: {}",
+                documentation
+                    .chars()
+                    .take(FEATURE_DESCRIPTION_MAX_LENGTH)
+                    .collect::<String>()
             );
-            
+
             match feature_repo.create(
                 &feature_id,
                 service_entry.id,
@@ -274,20 +278,34 @@ async fn update_knowledge_graph(
 /// Determine feature type from file path
 fn determine_feature_type(path: &str) -> FeatureType {
     let path_lower = path.to_lowercase();
-    
-    if path_lower.contains("api") || path_lower.contains("endpoint") || path_lower.contains("route") {
+
+    if path_lower.contains("api") || path_lower.contains("endpoint") || path_lower.contains("route")
+    {
         FeatureType::Api
-    } else if path_lower.contains("ui") || path_lower.contains("component") || path_lower.contains("view") {
+    } else if path_lower.contains("ui")
+        || path_lower.contains("component")
+        || path_lower.contains("view")
+    {
         FeatureType::Ui
     } else if path_lower.contains("test") {
         FeatureType::Testing
-    } else if path_lower.contains("config") || path_lower.ends_with(".toml") || path_lower.ends_with(".yaml") || path_lower.ends_with(".yml") {
+    } else if path_lower.contains("config")
+        || path_lower.ends_with(".toml")
+        || path_lower.ends_with(".yaml")
+        || path_lower.ends_with(".yml")
+    {
         FeatureType::Config
-    } else if path_lower.contains("db") || path_lower.contains("database") || path_lower.contains("migration") {
+    } else if path_lower.contains("db")
+        || path_lower.contains("database")
+        || path_lower.contains("migration")
+    {
         FeatureType::Database
     } else if path_lower.contains("security") || path_lower.contains("auth") {
         FeatureType::Security
-    } else if path_lower.contains("deploy") || path_lower.contains("docker") || path_lower.contains("ci") {
+    } else if path_lower.contains("deploy")
+        || path_lower.contains("docker")
+        || path_lower.contains("ci")
+    {
         FeatureType::Deployment
     } else if path_lower.contains("performance") || path_lower.contains("optimize") {
         FeatureType::Performance
@@ -301,7 +319,8 @@ fn extract_feature_name(path: &str, commit_message: &str) -> String {
     // Try to extract from commit message first
     let message_words: Vec<&str> = commit_message.split_whitespace().collect();
     if message_words.len() > 2 {
-        let feature_from_message = message_words.iter()
+        let feature_from_message = message_words
+            .iter()
             .take(5)
             .cloned()
             .collect::<Vec<_>>()
@@ -310,7 +329,7 @@ fn extract_feature_name(path: &str, commit_message: &str) -> String {
             return feature_from_message;
         }
     }
-    
+
     // Fallback to file path
     Path::new(path)
         .file_stem()
@@ -318,4 +337,3 @@ fn extract_feature_name(path: &str, commit_message: &str) -> String {
         .map(|s| s.replace('_', " ").replace('-', " "))
         .unwrap_or_else(|| "unknown feature".to_string())
 }
-

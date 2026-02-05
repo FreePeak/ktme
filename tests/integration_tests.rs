@@ -14,7 +14,7 @@ fn test_cli_help() {
 #[test]
 fn test_init_command() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new()?;
-    
+
     #[allow(deprecated)]
     let mut cmd = Command::cargo_bin("ktme").unwrap();
     cmd.args(&[
@@ -30,30 +30,30 @@ fn test_init_command() -> Result<(), Box<dyn std::error::Error>> {
     // Check that docs directory was created
     let docs_dir = temp_dir.path().join("docs");
     assert!(docs_dir.exists());
-    
+
     // Check that subdirectories were created
     assert!(docs_dir.join("api").exists());
     assert!(docs_dir.join("guides").exists());
     assert!(docs_dir.join("examples").exists());
-    
+
     // Check that documentation files were created
     assert!(docs_dir.join("README.md").exists());
     assert!(docs_dir.join("architecture.md").exists());
     assert!(docs_dir.join("api.md").exists());
     assert!(docs_dir.join("changelog.md").exists());
-    
+
     // Verify content of README
     let readme_content = fs::read_to_string(docs_dir.join("README.md"))?;
     assert!(readme_content.contains("test-init-service"));
     assert!(readme_content.contains("Documentation"));
-    
+
     Ok(())
 }
 
 #[test]
 fn test_init_command_idempotent() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new()?;
-    
+
     // Run init once
     #[allow(deprecated)]
     let mut cmd = Command::cargo_bin("ktme").unwrap();
@@ -76,18 +76,18 @@ fn test_init_command_idempotent() -> Result<(), Box<dyn std::error::Error>> {
         "--service",
         "test-service",
     ]);
-    
+
     let output = cmd.output()?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("already exists") || output.status.success());
-    
+
     Ok(())
 }
 
 #[test]
 fn test_init_with_force() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new()?;
-    
+
     // Run init once
     #[allow(deprecated)]
     let mut cmd = Command::cargo_bin("ktme").unwrap();
@@ -112,7 +112,7 @@ fn test_init_with_force() -> Result<(), Box<dyn std::error::Error>> {
         "--force",
     ]);
     cmd.assert().success();
-    
+
     Ok(())
 }
 
