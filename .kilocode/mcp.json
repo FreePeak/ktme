@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "db-mcp-server": {
+      "command": "/Users/linh.doan/work/harvey/freepeak/db-mcp-server/bin/server",
+      "args": ["-t", "stdio", "-c", "/Users/linh.doan/work/harvey/freepeak/db-mcp-server/config.json"],
+      "env": {},
+      "disabled": false
+    },
+    "ktme": {
+      "command": "/Users/linh.doan/.cargo/bin/ktme",
+      "args": ["mcp", "start", "--stdio"],
+      "env": {},
+      "disabled": false
+    }
+  }
+}

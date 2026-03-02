@@ -616,4 +616,110 @@ impl McpTools {
 
         Ok(result)
     }
+
+    // -------------------------------------------------------------------------
+    // Knowledge Graph Tools
+    // -------------------------------------------------------------------------
+
+    /// Return a knowledge graph (JSON + optional Mermaid) for the given service.
+    ///
+    /// Parameters:
+    ///   - `service`: optional service name filter; None returns all services
+    ///   - `depth`: traversal depth (0 = services only, 1 = +features, 2+ = +relations)
+    ///   - `include_mermaid`: when true, appends a Mermaid flowchart to the JSON output
+    pub fn get_knowledge_tree(
+        service: Option<&str>,
+        depth: Option<u32>,
+        include_mermaid: bool,
+    ) -> Result<String> {
+        tracing::info!(
+            "MCP Tool: get_knowledge_tree(service={:?}, depth={:?}, include_mermaid={})",
+            service,
+            depth,
+            include_mermaid
+        );
+
+        use crate::knowledge::engine::KnowledgeGraphEngine;
+        use crate::storage::database::Database;
+
+        let db = Database::new(None)?;
+        let engine = KnowledgeGraphEngine::new(db);
+        let graph = engine.get_tree(service, depth.unwrap_or(2))?;
+
+        let mut output = serde_json::to_string_pretty(&graph)
+            .map_err(|e| crate::error::KtmeError::Serialization(e))?;
+
+        if include_mermaid {
+            let mermaid = engine.to_mermaid(&graph);
+            output.push_str("\n\n---\n\n```mermaid\n");
+            output.push_str(&mermaid);
+            output.push_str("```\n");
+        }
+
+        Ok(output)
+    }
+
+    /// Return all context for a single feature.
+    ///
+    /// Lookup is by `feature_id` (UUID string). If not supplied, both
+    /// `feature_name` and `service_name` must be provided to locate the feature.
+    pub fn get_feature_context(
+        feature_id: Option<&str>,
+        feature_name: Option<&str>,
+        service_name: Option<&str>,
+    ) -> Result<String> {
+        tracing::info!(
+            "MCP Tool: get_feature_context(feature_id={:?}, feature_name={:?}, service_name={:?})",
+            feature_id,
+            feature_name,
+            service_name
+        );
+
+        use crate::knowledge::engine::KnowledgeGraphEngine;
+        use crate::storage::database::Database;
+        use crate::storage::repository::{FeatureRepository, ServiceRepository};
+
+        let db = Database::new(None)?;
+
+        let resolved_id = if let Some(id) = feature_id {
+            id.to_string()
+        } else {
+            // Resolve by name + service
+            let fname = feature_name.ok_or_else(|| {
+                crate::error::KtmeError::InvalidInput(
+                    "Either feature_id or both feature_name and service_name must be provided"
+                        .to_string(),
+                )
+            })?;
+            let sname = service_name.ok_or_else(|| {
+                crate::error::KtmeError::InvalidInput(
+                    "service_name is required when feature_id is not provided".to_string(),
+                )
+            })?;
+
+            let service_repo = ServiceRepository::new(db.clone());
+            let service = service_repo
+                .get_by_name(sname)?
+                .ok_or_else(|| crate::error::KtmeError::NotFound(format!("Service '{}' not found", sname)))?;
+
+            let feature_repo = FeatureRepository::new(db.clone());
+            let features = feature_repo.list_by_service(service.id)?;
+            features
+                .into_iter()
+                .find(|f| f.name.eq_ignore_ascii_case(fname))
+                .ok_or_else(|| {
+                    crate::error::KtmeError::NotFound(format!(
+                        "Feature '{}' not found in service '{}'",
+                        fname, sname
+                    ))
+                })?
+                .id
+        };
+
+        let engine = KnowledgeGraphEngine::new(db);
+        let ctx = engine.get_feature_context(&resolved_id)?;
+
+        serde_json::to_string_pretty(&ctx)
+            .map_err(|e| crate::error::KtmeError::Serialization(e))
+    }
 }

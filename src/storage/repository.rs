@@ -1078,6 +1078,330 @@ impl FeatureRepository {
 
         Ok(())
     }
+
+    pub fn update(
+        &self,
+        id: &str,
+        name: &str,
+        description: Option<&str>,
+        feature_type: FeatureType,
+        tags: Vec<String>,
+        metadata: serde_json::Value,
+    ) -> Result<()> {
+        let conn = self.db.connection()?;
+
+        let tags_json = serde_json::to_string(&tags).map_err(KtmeError::Serialization)?;
+        let metadata_json = serde_json::to_string(&metadata).map_err(KtmeError::Serialization)?;
+
+        conn.execute(
+            "UPDATE features SET name = ?1, description = ?2, feature_type = ?3, tags = ?4,
+             metadata = ?5, updated_at = CURRENT_TIMESTAMP WHERE id = ?6",
+            params![name, description, feature_type.to_string(), tags_json, metadata_json, id],
+        )
+        .map_err(|e| KtmeError::Storage(format!("Failed to update feature: {}", e)))?;
+
+        Ok(())
+    }
+
+    pub fn delete(&self, id: &str) -> Result<bool> {
+        let conn = self.db.connection()?;
+
+        let rows = conn
+            .execute("DELETE FROM features WHERE id = ?1", params![id])
+            .map_err(|e| KtmeError::Storage(format!("Failed to delete feature: {}", e)))?;
+
+        Ok(rows > 0)
+    }
+
+    /// Returns direct children of the feature as defined by feature_relations rows where
+    /// this feature is the parent.
+    pub fn get_children(&self, feature_id: &str) -> Result<Vec<Feature>> {
+        let conn = self.db.connection()?;
+
+        let mut stmt = conn
+            .prepare(
+                "SELECT f.id, f.service_id, f.name, f.description, f.feature_type, f.tags,
+                        f.metadata, f.relevance_score, f.created_at, f.updated_at
+                 FROM features f
+                 JOIN feature_relations fr ON f.id = fr.child_feature_id
+                 WHERE fr.parent_feature_id = ?1
+                 ORDER BY fr.strength DESC, f.name",
+            )
+            .map_err(|e| KtmeError::Storage(format!("Failed to prepare children query: {}", e)))?;
+
+        let features = stmt
+            .query_map(params![feature_id], |row| {
+                let tags_json: String = row.get(5)?;
+                let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
+                let metadata_json: String = row.get(6)?;
+                let metadata: serde_json::Value =
+                    serde_json::from_str(&metadata_json).unwrap_or_default();
+                let feature_type_str: String = row.get(4)?;
+                let feature_type = match feature_type_str.as_str() {
+                    "api" => FeatureType::Api,
+                    "ui" => FeatureType::Ui,
+                    "business_logic" => FeatureType::BusinessLogic,
+                    "config" => FeatureType::Config,
+                    "database" => FeatureType::Database,
+                    "security" => FeatureType::Security,
+                    "performance" => FeatureType::Performance,
+                    "testing" => FeatureType::Testing,
+                    "deployment" => FeatureType::Deployment,
+                    _ => FeatureType::Other,
+                };
+                Ok(Feature {
+                    id: row.get(0)?,
+                    service_id: row.get(1)?,
+                    name: row.get(2)?,
+                    description: row.get(3)?,
+                    feature_type,
+                    tags,
+                    metadata,
+                    relevance_score: row.get(7)?,
+                    embedding: None,
+                    created_at: row.get(8)?,
+                    updated_at: row.get(9)?,
+                })
+            })
+            .map_err(|e| KtmeError::Storage(format!("Failed to query children: {}", e)))?
+            .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()
+            .map_err(|e| KtmeError::Storage(format!("Failed to collect children: {}", e)))?;
+
+        Ok(features)
+    }
+
+    /// Returns direct parents of the feature as defined by feature_relations rows where
+    /// this feature is the child.
+    pub fn get_parents(&self, feature_id: &str) -> Result<Vec<Feature>> {
+        let conn = self.db.connection()?;
+
+        let mut stmt = conn
+            .prepare(
+                "SELECT f.id, f.service_id, f.name, f.description, f.feature_type, f.tags,
+                        f.metadata, f.relevance_score, f.created_at, f.updated_at
+                 FROM features f
+                 JOIN feature_relations fr ON f.id = fr.parent_feature_id
+                 WHERE fr.child_feature_id = ?1
+                 ORDER BY fr.strength DESC, f.name",
+            )
+            .map_err(|e| KtmeError::Storage(format!("Failed to prepare parents query: {}", e)))?;
+
+        let features = stmt
+            .query_map(params![feature_id], |row| {
+                let tags_json: String = row.get(5)?;
+                let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
+                let metadata_json: String = row.get(6)?;
+                let metadata: serde_json::Value =
+                    serde_json::from_str(&metadata_json).unwrap_or_default();
+                let feature_type_str: String = row.get(4)?;
+                let feature_type = match feature_type_str.as_str() {
+                    "api" => FeatureType::Api,
+                    "ui" => FeatureType::Ui,
+                    "business_logic" => FeatureType::BusinessLogic,
+                    "config" => FeatureType::Config,
+                    "database" => FeatureType::Database,
+                    "security" => FeatureType::Security,
+                    "performance" => FeatureType::Performance,
+                    "testing" => FeatureType::Testing,
+                    "deployment" => FeatureType::Deployment,
+                    _ => FeatureType::Other,
+                };
+                Ok(Feature {
+                    id: row.get(0)?,
+                    service_id: row.get(1)?,
+                    name: row.get(2)?,
+                    description: row.get(3)?,
+                    feature_type,
+                    tags,
+                    metadata,
+                    relevance_score: row.get(7)?,
+                    embedding: None,
+                    created_at: row.get(8)?,
+                    updated_at: row.get(9)?,
+                })
+            })
+            .map_err(|e| KtmeError::Storage(format!("Failed to query parents: {}", e)))?
+            .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()
+            .map_err(|e| KtmeError::Storage(format!("Failed to collect parents: {}", e)))?;
+
+        Ok(features)
+    }
+
+    /// Insert or replace a search index entry for this feature.
+    pub fn upsert_search_index(
+        &self,
+        feature_id: &str,
+        content_type: SearchContentType,
+        content: &str,
+    ) -> Result<()> {
+        let conn = self.db.connection()?;
+        let id = uuid::Uuid::new_v4().to_string();
+
+        conn.execute(
+            "INSERT INTO search_index (id, feature_id, content_type, content)
+             VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT(feature_id, content_type) DO UPDATE SET
+               content = excluded.content,
+               indexed_at = CURRENT_TIMESTAMP",
+            params![id, feature_id, content_type.to_string(), content],
+        )
+        .map_err(|e| KtmeError::Storage(format!("Failed to upsert search index: {}", e)))?;
+
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Feature Relation Repository
+// ============================================================================
+
+pub struct FeatureRelationRepository {
+    db: Database,
+}
+
+impl FeatureRelationRepository {
+    pub fn new(db: Database) -> Self {
+        Self { db }
+    }
+
+    pub fn create(
+        &self,
+        id: &str,
+        parent_feature_id: &str,
+        child_feature_id: &str,
+        relation_type: RelationType,
+        strength: f64,
+        metadata: serde_json::Value,
+    ) -> Result<FeatureRelation> {
+        let conn = self.db.connection()?;
+        let metadata_json = serde_json::to_string(&metadata).map_err(KtmeError::Serialization)?;
+
+        conn.execute(
+            "INSERT INTO feature_relations (id, parent_feature_id, child_feature_id, relation_type, strength, metadata)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![
+                id,
+                parent_feature_id,
+                child_feature_id,
+                relation_type.to_string(),
+                strength,
+                metadata_json
+            ],
+        )
+        .map_err(|e| KtmeError::Storage(format!("Failed to create feature relation: {}", e)))?;
+
+        self.get_by_id(id)?
+            .ok_or_else(|| KtmeError::Storage("Failed to retrieve created feature relation".into()))
+    }
+
+    pub fn get_by_id(&self, id: &str) -> Result<Option<FeatureRelation>> {
+        let conn = self.db.connection()?;
+
+        let result = conn.query_row(
+            "SELECT id, parent_feature_id, child_feature_id, relation_type, strength, metadata, created_at
+             FROM feature_relations WHERE id = ?1",
+            params![id],
+            Self::map_row,
+        );
+
+        match result {
+            Ok(rel) => Ok(Some(rel)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(KtmeError::Storage(format!("Failed to get feature relation: {}", e))),
+        }
+    }
+
+    pub fn list_for_parent(&self, parent_feature_id: &str) -> Result<Vec<FeatureRelation>> {
+        let conn = self.db.connection()?;
+
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, parent_feature_id, child_feature_id, relation_type, strength, metadata, created_at
+                 FROM feature_relations WHERE parent_feature_id = ?1
+                 ORDER BY strength DESC",
+            )
+            .map_err(|e| KtmeError::Storage(format!("Failed to prepare query: {}", e)))?;
+
+        let relations = stmt
+            .query_map(params![parent_feature_id], Self::map_row)
+            .map_err(|e| KtmeError::Storage(format!("Failed to query relations: {}", e)))?
+            .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()
+            .map_err(|e| KtmeError::Storage(format!("Failed to collect relations: {}", e)))?;
+
+        Ok(relations)
+    }
+
+    pub fn list_for_child(&self, child_feature_id: &str) -> Result<Vec<FeatureRelation>> {
+        let conn = self.db.connection()?;
+
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, parent_feature_id, child_feature_id, relation_type, strength, metadata, created_at
+                 FROM feature_relations WHERE child_feature_id = ?1
+                 ORDER BY strength DESC",
+            )
+            .map_err(|e| KtmeError::Storage(format!("Failed to prepare query: {}", e)))?;
+
+        let relations = stmt
+            .query_map(params![child_feature_id], Self::map_row)
+            .map_err(|e| KtmeError::Storage(format!("Failed to query relations: {}", e)))?
+            .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()
+            .map_err(|e| KtmeError::Storage(format!("Failed to collect relations: {}", e)))?;
+
+        Ok(relations)
+    }
+
+    pub fn delete(&self, id: &str) -> Result<bool> {
+        let conn = self.db.connection()?;
+
+        let rows = conn
+            .execute("DELETE FROM feature_relations WHERE id = ?1", params![id])
+            .map_err(|e| KtmeError::Storage(format!("Failed to delete feature relation: {}", e)))?;
+
+        Ok(rows > 0)
+    }
+
+    pub fn delete_between(&self, parent_id: &str, child_id: &str) -> Result<bool> {
+        let conn = self.db.connection()?;
+
+        let rows = conn
+            .execute(
+                "DELETE FROM feature_relations WHERE parent_feature_id = ?1 AND child_feature_id = ?2",
+                params![parent_id, child_id],
+            )
+            .map_err(|e| {
+                KtmeError::Storage(format!("Failed to delete feature relation: {}", e))
+            })?;
+
+        Ok(rows > 0)
+    }
+
+    fn map_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<FeatureRelation> {
+        let relation_type_str: String = row.get(3)?;
+        let relation_type = match relation_type_str.as_str() {
+            "depends_on" => RelationType::DependsOn,
+            "implements" => RelationType::Implements,
+            "extends" => RelationType::Extends,
+            "uses" => RelationType::Uses,
+            "configures" => RelationType::Configures,
+            "tests" => RelationType::Tests,
+            "deploys" => RelationType::Deploys,
+            _ => RelationType::Other,
+        };
+        let metadata_json: String = row.get(5)?;
+        let metadata: serde_json::Value =
+            serde_json::from_str(&metadata_json).unwrap_or_default();
+
+        Ok(FeatureRelation {
+            id: row.get(0)?,
+            parent_feature_id: row.get(1)?,
+            child_feature_id: row.get(2)?,
+            relation_type,
+            strength: row.get(4)?,
+            metadata,
+            created_at: row.get(6)?,
+        })
+    }
 }
 
 #[cfg(test)]

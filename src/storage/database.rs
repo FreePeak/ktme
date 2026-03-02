@@ -86,6 +86,10 @@ impl Database {
                 2,
                 include_str!("../../migrations/002_features_and_search.sql"),
             ),
+            (
+                3,
+                include_str!("../../migrations/003_search_index_unique.sql"),
+            ),
         ];
 
         for (version, sql) in &migrations {
@@ -143,6 +147,10 @@ impl Database {
             (
                 2,
                 include_str!("../../migrations/002_features_and_search.sql"),
+            ),
+            (
+                3,
+                include_str!("../../migrations/003_search_index_unique.sql"),
             ),
         ];
 
@@ -291,7 +299,7 @@ mod tests {
             .query_row([], |row| row.get(0))
             .expect("Failed to get version");
 
-        assert!(version >= 2, "Schema version should be at least 2");
+        assert!(version >= 3, "Schema version should be at least 3");
     }
 
     #[test]

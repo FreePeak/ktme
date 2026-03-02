@@ -7,6 +7,7 @@ mod config;
 mod doc;
 mod error;
 mod git;
+mod knowledge;
 mod mcp;
 mod service_detector;
 mod storage;
@@ -152,6 +153,18 @@ enum Commands {
 
         #[arg(long, help = "Save report to file")]
         output: Option<String>,
+    },
+
+    /// Display the knowledge tree map for services and features
+    Tree {
+        #[arg(long, help = "Filter to a specific service name")]
+        service: Option<String>,
+
+        #[arg(long, default_value = "2", help = "Traversal depth (0=services, 1=+features, 2+=+relations)")]
+        depth: Option<u32>,
+
+        #[arg(long, help = "Also print a Mermaid flowchart")]
+        mermaid: bool,
     },
 }
 
@@ -373,6 +386,13 @@ async fn main() -> Result<()> {
             output,
         } => {
             cli::commands::init::execute(path, service, force, mode, dry_run, output).await?;
+        }
+        Commands::Tree {
+            service,
+            depth,
+            mermaid,
+        } => {
+            cli::commands::tree::execute(service, depth, mermaid).await?;
         }
     }
 

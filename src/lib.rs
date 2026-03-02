@@ -8,6 +8,7 @@ pub mod config;
 pub mod doc;
 pub mod error;
 pub mod git;
+pub mod knowledge;
 pub mod mcp;
 pub mod service_detector;
 pub mod storage;

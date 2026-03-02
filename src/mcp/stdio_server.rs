@@ -201,6 +201,50 @@ impl StdioServer {
                                 "required": ["service", "doc_path", "content"]
                             }
                         }),
+                        json!({
+                            "name": "ktme_get_knowledge_tree",
+                            "description": "Return the knowledge tree (services -> features -> sub-features) as JSON, optionally with a Mermaid diagram",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "service": {
+                                        "type": "string",
+                                        "description": "Optional service name filter. Omit to return all services."
+                                    },
+                                    "depth": {
+                                        "type": "integer",
+                                        "description": "Traversal depth: 0=services only, 1=+features, 2+=+relations (default: 2)",
+                                        "default": 2
+                                    },
+                                    "include_mermaid": {
+                                        "type": "boolean",
+                                        "description": "Append a Mermaid flowchart to the JSON output (default: false)",
+                                        "default": false
+                                    }
+                                }
+                            }
+                        }),
+                        json!({
+                            "name": "ktme_get_feature_context",
+                            "description": "Return all context for a single feature: description, service, documents, parents, and children",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "feature_id": {
+                                        "type": "string",
+                                        "description": "Feature UUID. If provided, feature_name and service_name are ignored."
+                                    },
+                                    "feature_name": {
+                                        "type": "string",
+                                        "description": "Feature name (case-insensitive). Requires service_name."
+                                    },
+                                    "service_name": {
+                                        "type": "string",
+                                        "description": "Service name, used together with feature_name for lookup."
+                                    }
+                                }
+                            }
+                        }),
                     ];
 
                     // Build response without ID field initially
@@ -277,6 +321,31 @@ impl StdioServer {
                                 .unwrap_or("");
 
                             McpTools::update_documentation(service, doc_path, content)
+                                .unwrap_or_else(|e| format!("Error: {}", e))
+                        }
+                        "ktme_get_knowledge_tree" => {
+                            let service = arguments.get("service").and_then(|s| s.as_str());
+                            let depth = arguments
+                                .get("depth")
+                                .and_then(|d| d.as_u64())
+                                .map(|d| d as u32);
+                            let include_mermaid = arguments
+                                .get("include_mermaid")
+                                .and_then(|v| v.as_bool())
+                                .unwrap_or(false);
+
+                            McpTools::get_knowledge_tree(service, depth, include_mermaid)
+                                .unwrap_or_else(|e| format!("Error: {}", e))
+                        }
+                        "ktme_get_feature_context" => {
+                            let feature_id =
+                                arguments.get("feature_id").and_then(|v| v.as_str());
+                            let feature_name =
+                                arguments.get("feature_name").and_then(|v| v.as_str());
+                            let service_name =
+                                arguments.get("service_name").and_then(|v| v.as_str());
+
+                            McpTools::get_feature_context(feature_id, feature_name, service_name)
                                 .unwrap_or_else(|e| format!("Error: {}", e))
                         }
                         _ => {

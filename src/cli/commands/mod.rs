@@ -5,4 +5,5 @@ pub mod init;
 pub mod mapping;
 pub mod mcp;
 pub mod search;
+pub mod tree;
 pub mod update;
