@@ -160,7 +160,11 @@ enum Commands {
         #[arg(long, help = "Filter to a specific service name")]
         service: Option<String>,
 
-        #[arg(long, default_value = "2", help = "Traversal depth (0=services, 1=+features, 2+=+relations)")]
+        #[arg(
+            long,
+            default_value = "2",
+            help = "Traversal depth (0=services, 1=+features, 2+=+relations)"
+        )]
         depth: Option<u32>,
 
         #[arg(long, help = "Also print a Mermaid flowchart")]

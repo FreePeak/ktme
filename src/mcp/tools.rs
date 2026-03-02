@@ -406,7 +406,10 @@ impl McpTools {
         let docs_dir = project_dir.join("docs");
 
         if !docs_dir.exists() {
-            return Ok(format!("No documentation directory found at: {}", docs_dir.display()));
+            return Ok(format!(
+                "No documentation directory found at: {}",
+                docs_dir.display()
+            ));
         }
 
         let mut total_files = 0;
@@ -436,7 +439,10 @@ impl McpTools {
             }
         }
 
-        let mut result = format!("# Documentation Scan Report\n\n**Path:** {}\n\n## Summary\n", project_path);
+        let mut result = format!(
+            "# Documentation Scan Report\n\n**Path:** {}\n\n## Summary\n",
+            project_path
+        );
         result.push_str(&format!("- Total markdown files: {}\n", total_files));
         result.push_str(&format!("- Total sections: {}\n", total_sections));
         result.push_str(&format!("- Total code blocks: {}\n\n", total_code_blocks));
@@ -457,7 +463,10 @@ impl McpTools {
         let docs_dir = project_dir.join("docs");
 
         if !docs_dir.exists() {
-            return Ok(format!("No documentation directory found at: {}", docs_dir.display()));
+            return Ok(format!(
+                "No documentation directory found at: {}",
+                docs_dir.display()
+            ));
         }
 
         let mut validation_warnings = Vec::new();
@@ -482,14 +491,18 @@ impl McpTools {
                         let open_brackets = content.matches("[").count();
                         let close_brackets = content.matches("]").count();
                         if open_brackets != close_brackets {
-                            validation_errors.push(format!("{}: Potentially broken links detected", filename));
+                            validation_errors
+                                .push(format!("{}: Potentially broken links detected", filename));
                         }
                     }
                 }
             }
         }
 
-        let mut result = format!("# Documentation Validation Report\n\n**Path:** {}\n\n", project_path);
+        let mut result = format!(
+            "# Documentation Validation Report\n\n**Path:** {}\n\n",
+            project_path
+        );
 
         if validation_warnings.is_empty() && validation_errors.is_empty() {
             result.push_str("## Result\nAll checks passed!\n");
@@ -518,7 +531,10 @@ impl McpTools {
         let project_path = path.unwrap_or(".");
         let project_dir = std::path::PathBuf::from(project_path);
 
-        let mut result = format!("# Technology Stack Report\n\n**Path:** {}\n\n", project_path);
+        let mut result = format!(
+            "# Technology Stack Report\n\n**Path:** {}\n\n",
+            project_path
+        );
         result.push_str("## Detected Technologies\n\n");
 
         let cargo_toml = project_dir.join("Cargo.toml");
@@ -577,7 +593,10 @@ impl McpTools {
         let docs_dir = project_dir.join("docs");
 
         if !docs_dir.exists() {
-            return Ok(format!("No documentation directory found at: {}", docs_dir.display()));
+            return Ok(format!(
+                "No documentation directory found at: {}",
+                docs_dir.display()
+            ));
         }
 
         let mut todos = Vec::new();
@@ -698,9 +717,9 @@ impl McpTools {
             })?;
 
             let service_repo = ServiceRepository::new(db.clone());
-            let service = service_repo
-                .get_by_name(sname)?
-                .ok_or_else(|| crate::error::KtmeError::NotFound(format!("Service '{}' not found", sname)))?;
+            let service = service_repo.get_by_name(sname)?.ok_or_else(|| {
+                crate::error::KtmeError::NotFound(format!("Service '{}' not found", sname))
+            })?;
 
             let feature_repo = FeatureRepository::new(db.clone());
             let features = feature_repo.list_by_service(service.id)?;
@@ -719,7 +738,6 @@ impl McpTools {
         let engine = KnowledgeGraphEngine::new(db);
         let ctx = engine.get_feature_context(&resolved_id)?;
 
-        serde_json::to_string_pretty(&ctx)
-            .map_err(|e| crate::error::KtmeError::Serialization(e))
+        serde_json::to_string_pretty(&ctx).map_err(|e| crate::error::KtmeError::Serialization(e))
     }
 }

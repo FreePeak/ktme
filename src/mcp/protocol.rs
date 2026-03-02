@@ -409,6 +409,48 @@ impl McpProtocolHandler {
                     }
                 }
             }),
+            json!({
+                "name": "get_knowledge_tree",
+                "description": "Return full or partial knowledge tree map with optional Mermaid diagram",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "service": {
+                            "type": "string",
+                            "description": "Optional service name filter; None returns all services"
+                        },
+                        "depth": {
+                            "type": "number",
+                            "description": "Traversal depth (0 = services only, 1 = +features, 2+ = +relations)"
+                        },
+                        "include_mermaid": {
+                            "type": "boolean",
+                            "description": "When true, appends a Mermaid flowchart to the JSON output"
+                        }
+                    }
+                }
+            }),
+            json!({
+                "name": "get_feature_context",
+                "description": "Return all context for a single feature (docs, code refs, relationships)",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "feature_id": {
+                            "type": "string",
+                            "description": "Feature UUID (optional if feature_name + service_name provided)"
+                        },
+                        "feature_name": {
+                            "type": "string",
+                            "description": "Feature name (required if feature_id not provided)"
+                        },
+                        "service_name": {
+                            "type": "string",
+                            "description": "Service name (required if feature_id not provided)"
+                        }
+                    }
+                }
+            }),
         ]
     }
 
@@ -517,6 +559,24 @@ impl McpProtocolHandler {
             "find_documentation_todos" => {
                 let path = arguments.get("path").and_then(|p| p.as_str());
                 McpTools::find_documentation_todos(path)
+            }
+            "get_knowledge_tree" => {
+                let service = arguments.get("service").and_then(|s| s.as_str());
+                let depth = arguments
+                    .get("depth")
+                    .and_then(|d| d.as_u64())
+                    .map(|d| d as u32);
+                let include_mermaid = arguments
+                    .get("include_mermaid")
+                    .and_then(|m| m.as_bool())
+                    .unwrap_or(false);
+                McpTools::get_knowledge_tree(service, depth, include_mermaid)
+            }
+            "get_feature_context" => {
+                let feature_id = arguments.get("feature_id").and_then(|f| f.as_str());
+                let feature_name = arguments.get("feature_name").and_then(|f| f.as_str());
+                let service_name = arguments.get("service_name").and_then(|s| s.as_str());
+                McpTools::get_feature_context(feature_id, feature_name, service_name)
             }
             _ => Err(crate::error::KtmeError::InvalidInput(format!(
                 "Unknown tool: {}",

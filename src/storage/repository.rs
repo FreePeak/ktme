@@ -1096,7 +1096,14 @@ impl FeatureRepository {
         conn.execute(
             "UPDATE features SET name = ?1, description = ?2, feature_type = ?3, tags = ?4,
              metadata = ?5, updated_at = CURRENT_TIMESTAMP WHERE id = ?6",
-            params![name, description, feature_type.to_string(), tags_json, metadata_json, id],
+            params![
+                name,
+                description,
+                feature_type.to_string(),
+                tags_json,
+                metadata_json,
+                id
+            ],
         )
         .map_err(|e| KtmeError::Storage(format!("Failed to update feature: {}", e)))?;
 
@@ -1307,7 +1314,10 @@ impl FeatureRelationRepository {
         match result {
             Ok(rel) => Ok(Some(rel)),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(KtmeError::Storage(format!("Failed to get feature relation: {}", e))),
+            Err(e) => Err(KtmeError::Storage(format!(
+                "Failed to get feature relation: {}",
+                e
+            ))),
         }
     }
 
@@ -1389,8 +1399,7 @@ impl FeatureRelationRepository {
             _ => RelationType::Other,
         };
         let metadata_json: String = row.get(5)?;
-        let metadata: serde_json::Value =
-            serde_json::from_str(&metadata_json).unwrap_or_default();
+        let metadata: serde_json::Value = serde_json::from_str(&metadata_json).unwrap_or_default();
 
         Ok(FeatureRelation {
             id: row.get(0)?,

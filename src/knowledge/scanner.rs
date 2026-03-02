@@ -287,19 +287,45 @@ fn extract_comment_feature(line: &str) -> Option<String> {
 /// Classify a feature's type based on common naming patterns.
 fn classify_by_name(name: &str) -> FeatureType {
     let lower = name.to_lowercase();
-    if lower.contains("api") || lower.contains("endpoint") || lower.contains("route") || lower.contains("handler") {
+    if lower.contains("api")
+        || lower.contains("endpoint")
+        || lower.contains("route")
+        || lower.contains("handler")
+    {
         FeatureType::Api
-    } else if lower.contains("auth") || lower.contains("security") || lower.contains("token") || lower.contains("jwt") || lower.contains("oauth") {
+    } else if lower.contains("auth")
+        || lower.contains("security")
+        || lower.contains("token")
+        || lower.contains("jwt")
+        || lower.contains("oauth")
+    {
         FeatureType::Security
-    } else if lower.contains("db") || lower.contains("database") || lower.contains("repo") || lower.contains("storage") || lower.contains("model") {
+    } else if lower.contains("db")
+        || lower.contains("database")
+        || lower.contains("repo")
+        || lower.contains("storage")
+        || lower.contains("model")
+    {
         FeatureType::Database
     } else if lower.contains("config") || lower.contains("setting") || lower.contains("env") {
         FeatureType::Config
-    } else if lower.contains("test") || lower.contains("spec") || lower.contains("mock") || lower.contains("fixture") {
+    } else if lower.contains("test")
+        || lower.contains("spec")
+        || lower.contains("mock")
+        || lower.contains("fixture")
+    {
         FeatureType::Testing
-    } else if lower.contains("deploy") || lower.contains("docker") || lower.contains("k8s") || lower.contains("ci") {
+    } else if lower.contains("deploy")
+        || lower.contains("docker")
+        || lower.contains("k8s")
+        || lower.contains("ci")
+    {
         FeatureType::Deployment
-    } else if lower.contains("ui") || lower.contains("component") || lower.contains("view") || lower.contains("page") {
+    } else if lower.contains("ui")
+        || lower.contains("component")
+        || lower.contains("view")
+        || lower.contains("page")
+    {
         FeatureType::Ui
     } else if lower.contains("cache") || lower.contains("perf") || lower.contains("optim") {
         FeatureType::Performance

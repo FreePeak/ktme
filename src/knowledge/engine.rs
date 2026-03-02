@@ -45,11 +45,7 @@ impl KnowledgeGraphEngine {
     ///   - 0: service nodes only (no features)
     ///   - 1: service + their direct features (no sub-feature edges)
     ///   - 2+: features + their children up to `depth` levels
-    pub fn get_tree(
-        &self,
-        service_name: Option<&str>,
-        depth: u32,
-    ) -> Result<KnowledgeGraph> {
+    pub fn get_tree(&self, service_name: Option<&str>, depth: u32) -> Result<KnowledgeGraph> {
         let services = match service_name {
             Some(name) => {
                 let s = self
@@ -265,8 +261,10 @@ mod tests {
     use super::*;
     use crate::storage::database::Database;
     use crate::storage::models::FeatureType;
-    use crate::storage::repository::{FeatureRelationRepository, FeatureRepository, ServiceRepository};
     use crate::storage::models::RelationType;
+    use crate::storage::repository::{
+        FeatureRelationRepository, FeatureRepository, ServiceRepository,
+    };
 
     fn setup_engine() -> (KnowledgeGraphEngine, Database) {
         let db = Database::in_memory().expect("Failed to create test DB");

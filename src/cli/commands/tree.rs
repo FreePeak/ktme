@@ -7,11 +7,7 @@ use crate::storage::database::Database;
 /// - `service`: optional service name filter
 /// - `depth`: traversal depth (default 2)
 /// - `mermaid`: also print a Mermaid flowchart block
-pub async fn execute(
-    service: Option<String>,
-    depth: Option<u32>,
-    mermaid: bool,
-) -> Result<()> {
+pub async fn execute(service: Option<String>, depth: Option<u32>, mermaid: bool) -> Result<()> {
     let db = Database::new(None)?;
     let engine = KnowledgeGraphEngine::new(db);
     let effective_depth = depth.unwrap_or(2);

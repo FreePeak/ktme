@@ -338,8 +338,7 @@ impl StdioServer {
                                 .unwrap_or_else(|e| format!("Error: {}", e))
                         }
                         "ktme_get_feature_context" => {
-                            let feature_id =
-                                arguments.get("feature_id").and_then(|v| v.as_str());
+                            let feature_id = arguments.get("feature_id").and_then(|v| v.as_str());
                             let feature_name =
                                 arguments.get("feature_name").and_then(|v| v.as_str());
                             let service_name =

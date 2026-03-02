@@ -67,6 +67,9 @@ pub enum KtmeError {
     #[error("Document already exists: {0}")]
     DocumentExists(String),
 
+    #[error("Not found: {0}")]
+    NotFound(String),
+
     #[error("Unknown error: {0}")]
     Unknown(String),
 }
