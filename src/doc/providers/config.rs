@@ -1,6 +1,14 @@
 use crate::storage::models::ProviderConfig as DbProviderConfig;
 use serde::{Deserialize, Serialize};
 
+fn default_true() -> bool {
+    true
+}
+
+fn default_extension() -> String {
+    "md".to_string()
+}
+
 /// Provider configuration from database
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderConfig {
@@ -41,10 +49,6 @@ pub struct ConfluenceConfig {
     pub is_cloud: bool,
 }
 
-fn default_true() -> bool {
-    true
-}
-
 /// Markdown-specific configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MarkdownConfig {
@@ -55,8 +59,18 @@ pub struct MarkdownConfig {
     pub auto_create_dirs: bool,
 }
 
-fn default_extension() -> String {
-    "md".to_string()
+/// Notion-specific configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NotionConfig {
+    pub api_key: String,
+    #[serde(default)]
+    pub workspace_id: Option<String>,
+    #[serde(default)]
+    pub workspace_name: Option<String>,
+    #[serde(default)]
+    pub parent_page_id: Option<String>,
+    #[serde(default = "default_true")]
+    pub sync_enabled: bool,
 }
 
 /// Provider registry for managing multiple providers

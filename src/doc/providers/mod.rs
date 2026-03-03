@@ -1,6 +1,7 @@
 pub mod config;
 pub mod confluence;
 pub mod markdown;
+pub mod notion;
 
 use crate::error::Result;
 use async_trait::async_trait;
@@ -103,6 +104,12 @@ impl ProviderFactory {
                     serde_json::from_value(config.config.clone())
                         .map_err(|e| crate::error::KtmeError::Config(e.to_string()))?;
                 Ok(Box::new(markdown::MarkdownProvider::new(markdown_config)))
+            }
+            "notion" => {
+                let notion_config: config::NotionConfig =
+                    serde_json::from_value(config.config.clone())
+                        .map_err(|e| crate::error::KtmeError::Config(e.to_string()))?;
+                Ok(Box::new(notion::NotionProvider::new(notion_config)))
             }
             _ => Err(crate::error::KtmeError::UnsupportedProvider(format!(
                 "Provider '{}' is not supported",

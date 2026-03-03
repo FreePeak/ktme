@@ -431,3 +431,147 @@ pub struct KnowledgeGraph {
     pub root_nodes: Vec<String>,
     pub metadata: serde_json::Value,
 }
+
+/// Cloud tracking document synchronization
+/// Cloud sync status for tracking document synchronization
+pub struct CloudSyncStatus {
+    pub id: String,
+    pub mapping_id: i64,
+    pub provider: String,
+    pub remote_id: String,
+    pub content_hash_local: String,
+    pub content_hash_remote: Option<String>,
+    pub sync_state: SyncState,
+    pub conflict_data: Option<serde_json::Value>,
+    pub last_synced: Option<DateTime<Utc>>,
+    pub error_message: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Sync state enumeration
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SyncState {
+    Pending,
+    Synced,
+    Conflict,
+    Error,
+}
+
+impl std::fmt::Display for SyncState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pending => write!(f, "pending"),
+            Self::Synced => write!(f, "synced"),
+            Self::Conflict => write!(f, "conflict"),
+            Self::Error => write!(f, "error"),
+        }
+    }
+}
+
+impl std::str::FromStr for SyncState {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "pending" => Ok(Self::Pending),
+            "synced" => Ok(Self::Synced),
+            "conflict" => Ok(Self::Conflict),
+            "error" => Ok(Self::Error),
+            _ => Err(format!("Unknown sync state: {}", s)),
+        }
+    }
+}
+
+/// Notion workspace configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NotionConfig {
+    pub id: String,
+    pub workspace_id: String,
+    pub workspace_name: Option<String>,
+    pub api_key: String,
+    pub parent_page_id: Option<String>,
+    pub sync_enabled: bool,
+    pub last_full_sync: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Sync direction
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SyncDirection {
+    Fetch,
+    Push,
+}
+
+impl std::fmt::Display for SyncDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Fetch => write!(f, "fetch"),
+            Self::Push => write!(f, "push"),
+        }
+    }
+}
+
+/// Sync history entry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyncHistory {
+    pub id: String,
+    pub provider: String,
+    pub direction: SyncDirection,
+    pub mapping_id: Option<i64>,
+    pub remote_id: Option<String>,
+    pub status: SyncHistoryStatus,
+    pub changes_detected: bool,
+    pub local_hash_before: Option<String>,
+    pub local_hash_after: Option<String>,
+    pub remote_hash_before: Option<String>,
+    pub remote_hash_after: Option<String>,
+    pub error_message: Option<String>,
+    pub synced_at: DateTime<Utc>,
+}
+
+/// Sync history status
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SyncHistoryStatus {
+    Success,
+    Failed,
+    Conflict,
+    Skipped,
+}
+
+impl std::fmt::Display for SyncHistoryStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Success => write!(f, "success"),
+            Self::Failed => write!(f, "failed"),
+            Self::Conflict => write!(f, "conflict"),
+            Self::Skipped => write!(f, "skipped"),
+        }
+    }
+}
+
+impl std::str::FromStr for SyncHistoryStatus {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "success" => Ok(Self::Success),
+            "failed" => Ok(Self::Failed),
+            "conflict" => Ok(Self::Conflict),
+            "skipped" => Ok(Self::Skipped),
+            _ => Err(format!("Unknown sync history status: {}", s)),
+        }
+    }
+}
+
+/// Sync result summary
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyncSummary {
+    pub provider: String,
+    pub state: String,
+    pub count: i64,
+    pub earliest_sync: Option<DateTime<Utc>>,
+    pub latest_sync: Option<DateTime<Utc>>,
+}
