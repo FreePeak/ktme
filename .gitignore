@@ -1,3 +1,7 @@
+# Worktrees
+.worktrees/
+worktrees/
+
 # Rust
 /target/
 **/*.rs.bk
