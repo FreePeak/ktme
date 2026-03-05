@@ -11,9 +11,11 @@ pub mod git;
 pub mod knowledge;
 pub mod mcp;
 pub mod service_detector;
+pub mod skill;
 pub mod storage;
 
 pub use error::{KtmeError, Result};
+pub use skill::{Action, Skill, SkillConfig, SkillExecutor, SkillMatcher, Trigger};
 
 #[derive(Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum InitMode {

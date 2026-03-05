@@ -1,23 +1,48 @@
 # KTME - Knowledge Transfer Me
 
-> Automated documentation generation from Git changes using AI
+> AI-powered knowledge tree map that saves tokens for coding agents
 
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Crates.io](https://img.shields.io/crates/v/ktme.svg)](https://crates.io/crates/ktme)
 
-KTME is a CLI tool and MCP server that automatically generates and maintains documentation from Git changes. It integrates with GitHub, GitLab, and Confluence, using AI to create meaningful documentation from code commits and pull requests.
+KTME is a CLI tool and MCP server that serves as a **knowledge-based tree map system** for developers and AI agents. Its core mission is to **save tokens per AI agent context window** by providing structured, indexed, always-up-to-date knowledge about a codebase and its documentation.
+
+KTME bridges local documentation (markdown files, knowledge graphs) with cloud documentation platforms (Notion, Confluence) via fetch-and-sync capabilities, ensuring documents are **always up-to-date** through the MCP server protocol.
+
+## The Problem
+
+### The Context Window Problem
+
+AI coding agents (Copilot, Cursor, Claude, etc.) face a fundamental limitation: **context window size**. When working with large codebases, agents must repeatedly:
+
+- Re-scan entire codebases to understand architecture
+- Re-read documentation scattered across files, wikis, and cloud platforms
+- Re-discover relationships between features, services, and modules
+- Waste tokens on information that has already been processed
+
+### The Documentation Fragmentation Problem
+
+Teams maintain documentation across multiple platforms:
+- **Local markdown** files in the repo (`docs/`, `README.md`)
+- **Confluence** / Atlassian wiki for team knowledge
+- **Notion** for product specs and design docs
+- **GitHub/GitLab** wikis and issue trackers
+
+These documents are often out of sync, not indexed for machine consumption, and scattered without a unified hierarchy.
 
 ## Features
 
-- **Auto-Initialization** - Automatically creates documentation structure and knowledge graph on first use
+- **Knowledge Tree Map** - Hierarchical representation of services, features, and relationships
+- **Auto-Initialization** - Automatically creates documentation structure and knowledge graph
 - **Smart Documentation Generation** - AI-powered documentation from Git diffs, commits, and PRs
-- **Knowledge Graph** - Tracks features, relationships, and documentation across services
-- **Multiple Integrations** - GitHub, GitLab, and Confluence support
+- **Multiple Cloud Integrations** - Notion, Confluence, GitHub, and GitLab support
+- **Cloud Sync Engine** - Bi-directional sync with conflict detection and resolution
 - **Template System** - Customizable Markdown templates with variable substitution
-- **MCP Server** - Model Context Protocol server for AI agent integration
+- **MCP Server** - Model Context Protocol server with 16+ tools for AI agent integration
 - **Dual Storage** - TOML and SQLite backends for flexibility
 - **Service Mapping** - Organize documentation by service/project
+- **Search** - Keyword and feature-based search with relevance scoring
 
 ## Quick Start
 
@@ -44,6 +69,9 @@ ktme init --service my-service
 # Or initialize with auto-detection
 ktme init
 
+# Scan codebase to auto-populate features and relationships
+ktme scan --service my-service
+
 # Generate docs from staged changes (auto-initializes if needed)
 ktme generate --service my-service --staged
 
@@ -58,24 +86,67 @@ ktme update --service my-service --staged --section "API Changes"
 ktme mapping add my-service --file docs/api.md
 ```
 
+### MCP Server
+
+```bash
+# Start MCP server for AI agents
+ktme mcp start
+
+# Available tools include:
+# - ktme_get_knowledge_tree    # Get hierarchical knowledge map
+# - ktme_get_feature_context   # Get context for specific feature
+# - ktme_generate_documentation
+# - ktme_update_documentation
+# - ktme_list_services
+# - ktme_search_services
+# - ktme_search_by_feature
+# - ktme_search_by_keyword
+# - ktme_detect_service
+# - ktme_scan_documentation
+# - And more...
+```
+
+### Cloud Sync
+
+```bash
+# Sync Notion documents
+ktme sync --provider notion --workspace "Product Specs"
+
+# Sync Confluence pages
+ktme sync --provider confluence --space DOCS
+
+# Check sync status
+ktme sync --status
+```
+
 ### Configuration
 
 Create `~/.config/ktme/config.toml`:
 
 ```toml
-[git]
-github_token = "ghp_xxxxx"
-gitlab_token = "glpat_xxxxx"
+[ai]
+provider = "openai"         # openai, anthropic, gemini, mock
+api_key = "sk-xxxxx"        # or use KTME_AI_API_KEY env var
+model = "gpt-4"
+embedding_model = "text-embedding-3-small"
+
+[notion]
+api_key = "ntn_xxxxx"       # or use KTME_NOTION_API_KEY env var
+default_workspace = "Product"
 
 [confluence]
 base_url = "https://your-company.atlassian.net/wiki"
 api_token = "your-api-token"
 space_key = "DOCS"
 
-[ai]
-provider = "openai"
-api_key = "sk-xxxxx"
-model = "gpt-4"
+[git]
+github_token = "ghp_xxxxx"
+gitlab_token = "glpat_xxxxx"
+
+[sync]
+auto_sync = false
+conflict_strategy = "timestamp"  # local_wins, remote_wins, timestamp, manual
+sync_on_generate = true
 ```
 
 ## Documentation
@@ -85,81 +156,99 @@ model = "gpt-4"
 - **[Architecture](docs/architecture.md)** - System design and components
 - **[Development Guide](docs/DEVELOPMENT.md)** - Contributing and development setup
 
-## Core Capabilities
+## Architecture
 
-### 1. Initialization & Setup
-
-Initialize your project documentation and knowledge graph:
-```bash
-# Initialize in current directory
-ktme init
-
-# Initialize with specific service name
-ktme init --service my-api-service
-
-# Initialize in a different directory
-ktme init --path /path/to/project --service my-service
-
-# Force re-initialization
-ktme init --service my-service --force
+```
+┌─────────────┐     ┌──────────────┐     ┌───────────────┐
+│   Git CLI   │────▶│  Extractors  │────▶│  Generators   │
+│  GitHub API │     │ (Diff/PR/MR) │     │  (Templates)  │
+│  GitLab API │     └──────────────┘     └───────────────┘
+└─────────────┘              │                     │
+                             ▼                     ▼
+                     ┌──────────────┐     ┌───────────────┐
+                     │   Storage    │     │    Writers    │
+                     │ (TOML/SQLite)│     │(MD/Confluence)│
+                     └──────────────┘     └───────────────┘
+                             │
+                             ▼
+                     ┌──────────────┐     ┌───────────────┐
+                     │ Knowledge Tree│     │ Cloud Sync    │
+                     │    Engine     │     │   Engine      │
+                     └──────────────┘     └───────────────┘
+                                                  │
+                          ┌──────────────┐        │
+                          │  Notion API   │◀───────┘
+                          │  Confluence   │
+                          └──────────────┘
 ```
 
-What `ktme init` creates:
-- **Documentation structure** - `docs/` directory with README, architecture, API docs, and changelog
-- **Knowledge graph** - Service entry in SQLite database for tracking features and documentation
-- **Subdirectories** - `docs/api/`, `docs/guides/`, `docs/examples/` for organized documentation
+## Current Status (v0.3.0)
 
-### 2. Git Integration
+### Implemented Modules
 
-Extract changes from various sources:
-- Staged changes (`--staged`)
-- Specific commits (`--commit abc123`)
-- Commit ranges (`--range main..feature`)
-- Pull/Merge requests (`--pr 123`)
+| Module | Status | Description |
+| --- | --- | --- |
+| `cli/` | ✅ Implemented | 9 CLI commands |
+| `mcp/` | ✅ Implemented | MCP server with 16+ tools |
+| `storage/` | ✅ Implemented | SQLite backend |
+| `git/` | ✅ Implemented | Git diff extraction |
+| `doc/` | ✅ Implemented | Markdown + Confluence writers |
+| `ai/` | ⚠️ Partial | OpenAI + mock only |
+| `research/` | ⚠️ Basic | Reference finder, tech detector |
+| `enhance/` | ⚠️ Stub | Basic sync, link enricher |
+| `analysis/` | ⚠️ Basic | Doc parser, coverage analysis |
+| `config/` | ✅ Implemented | TOML-based configuration |
 
-### 3. Documentation Generation
+### What's Implemented
 
-Generate documentation with templates:
-```bash
-# Use custom template
-ktme generate --service api --template api-docs
+- Service detection from Git repo, package files
+- AI-powered documentation generation from Git diffs
+- Knowledge graph models (Feature, FeatureRelation, KnowledgeNode)
+- MCP server with stdio + HTTP/SSE transport
+- Keyword and feature search with relevance scoring
+- GitHub PR and GitLab MR extraction
+- Confluence write support
+- Markdown file generation with section updates
+- Template engine with variable substitution
 
-# Generate changelog
-ktme generate --service api --type changelog
+### What's NOT Yet Implemented
 
-# Output to specific file
-ktme generate --service api --output docs/changelog.md
-```
+| Feature | Status |
+| --- | --- |
+| Knowledge Tree Map traversal engine | Models defined, no query API |
+| Notion integration | Not started |
+| Cloud Sync Engine | Stub only |
+| Vector/Semantic Search | Text-only matching |
+| Feature Relationship Engine | Models exist, no CRUD |
+| Context Builder for AI agents | Models exist, no assembly |
+| Multi-AI Provider Support | OpenAI + mock only |
+| Confluence Fetch (Read) | Write-only |
 
-The `generate` command automatically:
-- Initializes the knowledge graph if not already done
-- Creates feature entries for significant code changes
-- Tracks documentation history and relationships
+## Roadmap
 
-### 4. Smart Updates
+### Phase 1: Automated Discovery & Cold Start (Current Priority)
+**Goal**: Populate the database with meaningful data without manual entry.
+- [ ] CLI Command: Implement `ktme scan` to run heuristics and save to DB
+- [ ] Relationship Detection: Enhance `CodebaseScanner` to map imports to feature dependencies
+- [ ] Idempotency: Ensure scanning multiple times doesn't duplicate data
 
-Update existing documentation intelligently:
-```bash
-# Update specific section
-ktme update --service api --section "Breaking Changes"
+### Phase 2: Cloud Sync Engine & Notion Integration
+**Goal**: Bi-directional sync with cloud documentation platforms.
+- [ ] Sync Infrastructure: Create `cloud_sync_status` to track SHA-256 hashes
+- [ ] Notion Provider: Implement page/database fetching and Markdown conversion
+- [ ] Sync Workflow: Implement conflict detection (local-wins vs. remote-wins)
 
-# Smart merge with existing content
-ktme update --service api --staged
-```
+### Phase 3: AI Context Optimization & Semantic Search
+**Goal**: Optimize token usage and improve relevance.
+- [ ] Semantic Search: Implement embedding generation and vector search
+- [ ] Context Builder: Intelligent assembly of "context packages" for AI agents
+- [ ] Token-Aware Trimming: Summarize or truncate content to fit context windows
 
-### 5. MCP Server
-
-Run as MCP server for AI agents:
-```bash
-# Start server
-ktme mcp start
-
-# Available tools:
-# - ktme_generate_documentation
-# - ktme_update_documentation
-# - ktme_list_services
-# - ktme_search_features
-```
+### Phase 4: Polish & Multi-Provider Support
+**Goal**: Enterprise-readiness and extensibility.
+- [ ] Anthropic/Gemini Providers: Add more LLM options
+- [ ] Caching: LRU caching for expensive search results and knowledge graphs
+- [ ] Validation: Deep link checking and documentation coverage analysis
 
 ## Development
 
@@ -184,38 +273,6 @@ make release
 ```
 
 See [docs/RELEASE.md](docs/RELEASE.md) for complete release documentation.
-
-## Architecture
-
-```
-┌─────────────┐     ┌──────────────┐     ┌───────────────┐
-│   Git CLI   │────▶│  Extractors  │────▶│  Generators   │
-│  GitHub API │     │ (Diff/PR/MR) │     │  (Templates)  │
-│  GitLab API │     └──────────────┘     └───────────────┘
-└─────────────┘              │                     │
-                             ▼                     ▼
-                     ┌──────────────┐     ┌───────────────┐
-                     │   Storage    │     │    Writers    │
-                     │ (TOML/SQLite)│     │ (MD/Confluence)│
-                     └──────────────┘     └───────────────┘
-```
-
-## Recent Updates (v0.1.0)
-
-### New Features
-- ✅ Template engine with variable substitution
-- ✅ Smart documentation merging by section
-- ✅ GitHub PR extraction and integration
-- ✅ GitLab MR extraction and integration
-- ✅ Confluence writer with Markdown conversion
-- ✅ Enhanced Markdown writer with section updates
-
-### Implementation Details
-- **34 new tests** (all passing)
-- **10 files modified** with new functionality
-- **Zero compilation errors** after strict linting
-
-See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
 ## Contributing
 

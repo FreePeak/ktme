@@ -1,6 +1,4 @@
-use super::{
-    config::NotionConfig, Document, DocumentMetadata, DocumentProvider, PublishResult,
-};
+use super::{config::NotionConfig, Document, DocumentMetadata, DocumentProvider, PublishResult};
 use crate::error::{KtmeError, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
